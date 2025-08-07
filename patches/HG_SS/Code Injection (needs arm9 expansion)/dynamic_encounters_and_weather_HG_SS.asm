@@ -24,17 +24,26 @@ SaveData_GetFieldOverworldState equ 0x0203B9C4 ; Save_LocalFieldData_Get
 FieldOverworldState_SetWeather equ 0x0203B98C; LocalFieldData_SetWeatherType
 UpdateWeatherAnimation equ 0x021EB2B8 ; FieldWeatherUpdate_UsedFlash (this handles more than just flash bad name by pokeheartgold)
 
+INJECT_ADDR equ 0x023C8070
+
+.ifdef PATCH
 .open "arm9.bin", 0x02000000  ; Open arm9.bin
 
 .org 0x020fb07c ; Overwrite script command DummyTrainerBattle (0xDF/223)
+
     .word dyn_enc_weath+1
+
 .close
+.endif
 
+.ifdef PREASSEMBLE
+.create "temp.bin", 0x023C8000
+.elseifdef PATCH
 .open "unpacked/synthOverlay/0000", 0x023C8000  ; Open the synth overlay
+.endif
 
-INJECT_ADDR equ 0x023C8070
 .org INJECT_ADDR
-.ascii "dyn_enc_weath"
+.ascii "dyn_enc_weath_start"
 .align 2
 dyn_enc_weath:
     push {r4, r5, r6, r7, lr}
@@ -87,4 +96,7 @@ dyn_enc_weath:
     pop {r4, r5, r6, r7, pc} ; pop registers and return
 
 .pool
+
+.ascii "dyn_enc_weath_end"
+
 .close

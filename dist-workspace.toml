@@ -10,10 +10,15 @@ ci = "github"
 # The installers to generate for each app
 installers = []
 # Target platforms to build apps for (Rust target-triple syntax)
-targets = ["aarch64-apple-darwin", "x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]
-# A namespace to use when publishing this package to the npm registry
-npm-scope = "@g4patcher"
+targets = ["aarch64-apple-darwin", "x86_64-pc-windows-msvc"]
 # Path that installers should place binaries in
 install-path = "CARGO_HOME"
 # Whether to install an updater program
 install-updater = false
+
+[dist.github-custom-runners]
+global = "ubuntu-latest"
+aarch64-apple-darwin = "macos-14"
+x86_64-apple-darwin = "macos-13"
+x86_64-pc-windows-msvc = "windows-latest"
+armv7-unknown-linux-musleabihf = "ubuntu-22.04"
