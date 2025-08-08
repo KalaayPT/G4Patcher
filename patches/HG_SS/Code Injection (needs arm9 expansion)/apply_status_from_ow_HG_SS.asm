@@ -12,8 +12,8 @@ Party_GetPokemonBySlotIndex equ 0x02074644 ; Party_GetMonByIndex
 Pokemon_GetValue equ 0x0206E540 ; GetMonData
 Pokemon_SetValue equ 0x0206EC40 ; SetMonData
 
-ScriptVar_8004 equ 0x8004 ; Script variable 0x8004
-ScriptVar_8005 equ 0x8005 ; Script variable 0x8005
+ScriptVar_PartySlot equ 0x8004 ; Script variable 0x8004
+ScriptVar_Condition equ 0x8005 ; Script variable 0x8005
 
 MON_DATA_STATUS_CONDITION equ 160
 
@@ -64,11 +64,11 @@ apply_status_from_ow:
     mov r1, 0x80
     add r1, r4, r1 ; r1 = scriptContext + 128 = &fieldSystem
     ldr r5,[r1] ; r5 = scriptContext->fieldSystem
-    ldr r1, =ScriptVar_8004 ; read script variable 0x8004
+    ldr r1, =ScriptVar_PartySlot ; read script variable 0x8004
     mov r0, r5
     bl FieldSystem_TryGetVar ; FieldSystem_TryGetVar(ctx->fieldSystem, 0x8004)
     mov r6, r0 ; r6 = partySlot
-    ldr r1, =ScriptVar_8005 ; read script variable 0x8005
+    ldr r1, =ScriptVar_Condition ; read script variable 0x8005
     mov r0, r5
     bl FieldSystem_TryGetVar ; FieldSystem_TryGetVar(ctx->fieldSystem, 0x8005)
     mov r4, r0 ; r4 = status parameter
