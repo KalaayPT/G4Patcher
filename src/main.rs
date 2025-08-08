@@ -1,3 +1,4 @@
+#![windows_subsystem = "windows"]
 #![warn(clippy::nursery, clippy::pedantic)]
 
 mod constants;
@@ -59,7 +60,7 @@ fn run_cli() -> io::Result<()> {
             return enter_to_exit();
         }
     };
-    
+
     let game_version = match determine_game_version(&project_path) {
         Ok(version) => version,
         Err(e) => {
@@ -113,7 +114,7 @@ fn main() -> eframe::Result {
 
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([640.0, 400.0]) 
+            .with_inner_size([640.0, 400.0])
             .with_drag_and_drop(true),
         ..Default::default()
     };
