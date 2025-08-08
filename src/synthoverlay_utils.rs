@@ -3,8 +3,8 @@
 use std::{fs, io};
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
+use log::info;
 use crate::constants::{GAME_DEPENDENT_OVERLAY_HG, GAME_DEPENDENT_OVERLAY_PLAT};
-use crate::enter_to_exit;
 use crate::usage_checks::is_arm9_expanded;
 
 /// Determine the game overlay based on the patch name.
@@ -135,10 +135,11 @@ pub fn handle_synthoverlay(patch_path: &str, project_path: &str, game_version: &
 
     // Check if the arm9 is expanded, if not, prompt the user to expand it
     if is_arm9_expanded(project_path, game_version)? {
-        println!("arm9 is expanded, proceeding");
+        info!("arm9 is expanded, proceeding");
     } else {
-        println!("arm9 is not expanded, please expand it before running this tool.");
-        return enter_to_exit();
+        return Err(io::Error::other(
+            "arm9 is not expanded, please expand it before applying the patch.",
+        ));
     }
     // Read and process the synthOverlay file
     let synth_overlay_path = format!(
@@ -147,20 +148,20 @@ pub fn handle_synthoverlay(patch_path: &str, project_path: &str, game_version: &
         determine_game_overlay(patch_path)
     );
     let synth_overlay = fs::read(&synth_overlay_path)?;
-    println!(
+    info!(
         "Read synthOverlay file successfully. Located at: {synth_overlay_path}"
     );
-    println!("Searching for injection offset");
+    info!("Searching for injection offset");
     let offset =
         find_injection_offset(&synth_overlay, required_size).expect("Failed to find injection offset");
-    println!(
+    info!(
         "Found injection offset at {:#X} in synthOverlay {}",
         offset,
         determine_game_overlay(patch_path)
     );
 
     let corrected_offset = 0x23c8000 + offset as u32;
-    println!("Corrected offset: {corrected_offset:#X}");
+    info!("Corrected offset: {corrected_offset:#X}");
     insert_corrected_offset(patch_path, corrected_offset)
         .expect("Failed to correct offset in asm file");
     Ok(())

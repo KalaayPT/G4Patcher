@@ -29,7 +29,22 @@ An [armips](https://github.com/Kingcom/armips) binary is bundled into the releas
 
 can now be found [in the wiki](https://github.com/KalaayPT/G4Patcher/wiki/Included-Patches)
 
-## 4. Contributing:
+## 4. Build Instructions:
+
+1. Install Rust and Cargo: Follow the instructions at https://www.rust-lang.org/tools/install
+2. Clone the repository:
+```bash
+git clone https://github.com/KalaayPT/G4Patcher.git
+cd G4Patcher
+```
+3. Build the project:
+```bash
+cargo build
+```
+4. Find the executable in target/release/g4patcher
+5. Run G4Patcher
+
+## 5. Contributing:
 
 If you want to contribute your own patches, you can use the included ones as templates as to what yours are supposed to look like. 
 

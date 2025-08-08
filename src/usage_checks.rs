@@ -6,6 +6,7 @@ use crate::constants::{
 use std::io::{BufRead, BufReader, Read, Seek, SeekFrom};
 use std::path::PathBuf;
 use std::{fs, io};
+use log::error;
 
 /// Determine the game version based on the header.bin file in the project path.
 ///
@@ -29,20 +30,17 @@ pub fn determine_game_version(project_path: &str) -> io::Result<&str> {
     let header_path = PathBuf::from(project_path).join("header.bin");
 
     fs::File::open(&header_path).map_or_else(|_| {
-        eprintln!("header.bin not found at path: {}", header_path.display());
         Err(io::Error::new(io::ErrorKind::NotFound, "header.bin not found"))
     }, |mut file| {
         let mut buf = [0u8; 4];
-        file.seek(SeekFrom::Start(0xC))
-            .expect("Failed to seek in header.bin");
-        file.read_exact(&mut buf)
-            .expect("Failed to read from header.bin");
+        file.seek(SeekFrom::Start(0xC))?;
+        file.read_exact(&mut buf)?;
         match buf {
             PLATINUM_BYTES => Ok(PLATINUM),
             HEARTGOLD_BYTES => Ok(HEARTGOLD),
             SOULSILVER_BYTES => Ok(SOULSILVER),
             _ => {
-                eprintln!("Unknown game version in header.bin at path: {}\nBytes found:{:02X} {:02X} {:02X} {:02X}",
+                error!("Unknown game version in header.bin at path: {}\nBytes found:{:02X} {:02X} {:02X} {:02X}",
                        header_path.display(), buf[0], buf[1], buf[2], buf[3]);
                 Err(io::Error::new(io::ErrorKind::InvalidData, "Unknown game version in header.bin"))
             }
