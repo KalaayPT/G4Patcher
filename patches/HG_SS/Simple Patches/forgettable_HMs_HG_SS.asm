@@ -1,0 +1,26 @@
+; forgettable_HMs_HG_SS.asm
+; forgettable HMs in overworld and in battle, research by AdAstra
+; make sure to not let players softlock themselves
+
+.nds
+.thumb
+
+.open "overlay/overlay_0008.bin", 0x0221BE20
+
+.org 0x0221C75A
+
+    .byte 0xC0, 0x46, 0x00, 0x20, 0x01, 0x28
+
+.close
+
+.open "arm9.bin", 0x02000000
+
+.org 0x020890A8
+
+    .byte 0xC0, 0x46, 0x00, 0x20, 0x01, 0x28
+
+.org 0x0208917A
+
+    .byte 0xC0, 0x46, 0x00, 0x20, 0x01, 0x28
+
+.close
