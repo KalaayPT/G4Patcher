@@ -1,4 +1,4 @@
-; infinite_TMs_PLAT.asm
+; infinite_TMs_HG_SS.asm
 ; forgettable HMs in overworld and in battle, HexEdit by Drayano, research by Mikelan98, NextWorld, BagBoy
 ; Mikelan98 requests that you give credit to him if you implement this in your hack.
 
