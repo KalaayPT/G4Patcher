@@ -11,6 +11,8 @@ After checking these things, it adjusts the patch file with the corrected inject
 
 An [armips](https://github.com/Kingcom/armips) binary is bundled into the release, so no need to install anything!
 
+Please credit me (Kalaay) and the people behind the research for the patches if you use them in your own projects. Credits for research can always be found in the patch files themselves, as well as in the [wiki](https://github.com/KalaayPT/G4Patcher/wiki)
+
 ## 1. Usage:
 
 1. Download the latest [release](https://github.com/KalaayPT/g4patcher/releases)
