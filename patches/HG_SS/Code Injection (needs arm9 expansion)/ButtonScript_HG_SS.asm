@@ -23,6 +23,8 @@ RButton equ 256
 LButton equ 512
 XButton equ 1024
 
+StartMapSceneScript equ 0x0203FE74 ; StartMapSceneScript(fieldSystem, scriptID, lastInteracted)
+
 INJECT_ADDR equ 0x023C8000
 
 ; ------- Inject hook into arm9.bin -------
@@ -51,30 +53,30 @@ INJECT_ADDR equ 0x023C8000
 PortaPC:
     push {r3, r4, r5, r6, r7, lr}
 
-        add  r4, r1, #0         ; putting fieldSystem back into r4
+        add     r4, r1, #0         ; putting fieldSystem back into r4
         ; these next two are both overwritten instructions that we have to copy over
-        lsl r0, r0, #23
-        lsr r0, r0, #31
-        beq  end_rel
+        lsl     r0, r0, #23
+        lsr     r0, r0, #31
+        beq     end_rel
 
         ; Access gSystem->newKeys
-        ldr  r3, =0x021D110C    ; r3 = gSystem
-        ldr  r2, [r3, #0x48]    ; r2 = gSystem->newKeys
-        ldr r3, =PressedButton    ; Button bitmask
-        tst  r2, r3             ; check if pressed
-        bne  call_script
-        pop  {r3, r4, r5, r6, r7, pc}
+        ldr     r3, =0x021D110C    ; r3 = gSystem
+        ldr     r2, [r3, #0x48]    ; r2 = gSystem->newKeys
+        ldr     r3, =PressedButton    ; Button bitmask
+        tst     r2, r3             ; check if pressed
+        bne     call_script
+        pop     {r3, r4, r5, r6, r7, pc}
 
     call_script:
-        add r0, r4, #0
-        ldr r1, =ScriptID       ; ScriptID: 2072
-        mov r2, #0              ; lastInteracted = NULL
-        bl 0x0203FE74           ; StartMapSceneScript(fieldSystem, 2072, NULL)
-        pop  {r3, r4, r5, r6, r7, pc}
+        add     r0, r4, #0
+        ldr     r1, =ScriptID       ; ScriptID: 2072
+        mov     r2, #0              ; lastInteracted = NULL
+        bl      StartMapSceneScript           ; StartMapSceneScript(fieldSystem, 2072, NULL)
+        pop     {r3, r4, r5, r6, r7, pc}
 
     end_rel:
-        mov r0, #0
-        pop  {r3, r4, r5, r6, r7, pc}
+        mov     r0, #0
+        pop     {r3, r4, r5, r6, r7, pc}
 
 .pool
 
