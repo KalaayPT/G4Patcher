@@ -1,78 +1,39 @@
+#![windows_subsystem = "windows"]
 #![warn(clippy::nursery, clippy::pedantic)]
 
 mod constants;
 mod synthoverlay_utils;
 mod usage_checks;
+mod filedialog;
+mod gui;
 
 use std::fs;
-use rfd::FileDialog;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use eframe::{egui};
 use usage_checks::{determine_game_version, is_patch_compatible, needs_synthoverlay};
 use synthoverlay_utils::handle_synthoverlay;
 use constants::{PATCH_DIRECTIVE, PREASSEMBLE_DIRECTIVE};
-
-fn get_project_path() -> PathBuf {
-    // Use rfd to open a file dialog and select the project path
-    FileDialog::new()
-        .set_title("Select unpacked ROM folder")
-        .pick_folder()
-        .map_or_else(
-            || {
-                println!("No folder selected, exiting.");
-                std::process::exit(0);
-            },
-            |selected_folder| {
-                println!("Selected folder: {}", selected_folder.display());
-                selected_folder
-            },
-        )
-}
-
-fn get_patch_path(exe_dir: &Path, game_version: &str) -> PathBuf {
-    println!("Please select the patch file to apply");
-
-    let patches_dir = exe_dir.join("patches");
-
-    // Use rfd to open a file dialog and select the project path
-    FileDialog::new()
-        .add_filter("Patch files", &["asm"])
-        .set_title("Select Patch file")
-        .set_directory(patches_dir.join(
-            match game_version {
-                "Platinum" => "PLAT",
-                "HeartGold" | "SoulSilver" => "HG_SS",
-                _ => {
-                    panic!("Unknown game version: {game_version}.");
-                }
-            }
-        ))
-        .pick_file()
-        .map_or_else(
-            || {
-                println!("No patch selected, exiting.");
-                std::process::exit(0);
-            },
-            |selected_patch| {
-                println!("\nSelected patch: {}", selected_patch.display());
-                selected_patch
-            },
-        )
-}
+use log::{error, info, warn};
+use filedialog::{get_project_path, get_patch_path};
+use crate::gui::{G4PatcherApp, GuiLogger};
 
 fn run_armips(asm_path: &str, rom_dir: &str, exe_dir: &Path, armips_directive: &str) -> io::Result<()> {
     let armips_path = exe_dir.join("assets").join("armips.exe");
-    //println!("Using armips at: {}", armips_path.display());
-    
+    if !armips_path.exists() {
+        error!("armips executable not found at {}", armips_path.display());
+        return Err(io::Error::new(io::ErrorKind::NotFound, "armips.exe not found"));
+    }
+
     if armips_directive == PREASSEMBLE_DIRECTIVE { 
-        println!("Calculating patch size...");
+        info!("Calculating patch size...");
         Command::new(armips_path)
             .args([asm_path, "-definelabel", PREASSEMBLE_DIRECTIVE, "1"])
             .current_dir(rom_dir)
             .status()?;
     } else {
-        println!("Patching ROM with armips...");
+        info!("Patching ROM with armips...");
         Command::new(armips_path)
             .args([asm_path, "-definelabel", PATCH_DIRECTIVE, "1"])
             .current_dir(rom_dir)
@@ -88,11 +49,18 @@ fn enter_to_exit() -> Result<(), io::Error> {
     Ok(())
 }
 
-fn main() -> io::Result<()> {
+fn run_cli() -> io::Result<()> {
     println!("Welcome to the Platinum/HGSS code injection patcher!\n\nMake sure to read the documentation for the patch you are trying to apply!\n\nPlease select your unpacked ROM folder");
 
     // Get the project path from the user
-    let project_path = get_project_path().display().to_string();
+    let project_path = match get_project_path() {
+        Some(path) => path.display().to_string(),
+        None => {
+            println!("No project path selected, exiting.");
+            return enter_to_exit();
+        }
+    };
+
     let game_version = match determine_game_version(&project_path) {
         Ok(version) => version,
         Err(e) => {
@@ -110,14 +78,16 @@ fn main() -> io::Result<()> {
         .unwrap_or_else(|| PathBuf::from("."));
 
     // Get the selected patch file from the user
-    let patch_path = get_patch_path(&exe_dir, game_version).display().to_string();
+    let patch_path = get_patch_path(&exe_dir)
+        .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "No patch file selected"))?
+        .display().to_string();
 
     // Check if the patch is compatible with the selected ROM
     if !is_patch_compatible(&patch_path, &project_path) {
         println!("This patch is not compatible with this ROM, please select a compatible patch.");
         return enter_to_exit();
     }
-    
+
     if needs_synthoverlay(&patch_path) {
         // preassemble the patch to calculate the size from the created temp.bin
         if !matches!(run_armips(&patch_path, &project_path, &exe_dir, PREASSEMBLE_DIRECTIVE), Ok(())) {
@@ -134,7 +104,30 @@ fn main() -> io::Result<()> {
 
     if matches!(run_armips(&patch_path, &project_path, &exe_dir, PATCH_DIRECTIVE), Ok(())) {
         println!("\narmips ran successfully, patch applied! You can now repack your ROM.\n");
-    } 
+    }
 
     enter_to_exit()
 }
+
+fn main() -> eframe::Result {
+    GuiLogger::init(log::LevelFilter::Info);
+
+    let options = eframe::NativeOptions {
+        viewport: egui::ViewportBuilder::default()
+            .with_inner_size([640.0, 400.0])
+            .with_drag_and_drop(true),
+        ..Default::default()
+    };
+    eframe::run_native(
+        "G4Patcher",
+        options,
+        Box::new(|_cc| Ok(Box::<G4PatcherApp>::default())),
+    )
+
+    //if let Err(e) = run_cli() {
+    //    error!("An error occurred: {e}");
+    //    return Err(e);
+    //}
+    //Ok(())
+}
+

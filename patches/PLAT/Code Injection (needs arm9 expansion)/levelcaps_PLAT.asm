@@ -31,6 +31,13 @@
 
 INJECT_ADDR equ 0x023C8B20
 
+Item_Get equ 0x0207D014
+Pokemon_GetValue equ 0x2074470
+Heap_Free equ 0x020181c4
+SaveData_Ptr equ 0x020245a4
+SaveData_GetVarsFlags equ 0x020507E4
+VarsFlags_GetVarAddress    equ 0x020508B8
+
 .ifdef PATCH
 .open "arm9.bin", 0x02000000
 
@@ -78,13 +85,13 @@ end:
 candycheck:
 	add r0, r4, #0
 	mov r1, #0x19
-	bl 0x207d014
+	bl Item_Get
 	cmp r0, #0
 	beq end2
 	add r0, r6, #0
 	mov r1, #0xa1
 	mov r2, #0
-	bl 0x2074470
+	bl Pokemon_GetValue
 	
 	push {r0}
 	bl getlevelcap
@@ -94,7 +101,7 @@ candycheck:
 	bhs end2
 		
 	add r0, r4, #0
-	bl 0x20181c4
+	bl Heap_Free
 	add sp, #0x18
 	mov r0, #1
 	pop {r3, r4, r5, r6, r7, pc}
@@ -102,20 +109,15 @@ candycheck:
 end2:
 	bl 0x209657e
 
-end3:
-	pop {r0-r2}
-	bl 0x209657e	
-	
 getlevelcap:
 	push {r3-r7,lr}
 	bl getscriptvar
-	pop {r3-r7,pc}
-	
+
 getscriptvar:
-	bl 0x020245a4
-	bl 0x020507E4
+	bl SaveData_Ptr
+	bl SaveData_GetVarsFlags
 	ldr r1, =VarNum
-	bl 0x020508B8
+	bl VarsFlags_GetVarAddress
 	ldrh r0, [r0]
 	pop {r3-r7,pc}
 	
