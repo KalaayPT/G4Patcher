@@ -1,6 +1,5 @@
 use crate::constants::{PATCH_DIRECTIVE, PREASSEMBLE_DIRECTIVE};
 use crate::filedialog::{get_patch_path, get_project_path};
-use crate::io::Error;
 use crate::run_armips;
 use crate::synthoverlay_utils::handle_synthoverlay;
 use crate::usage_checks::{determine_game_version, is_patch_compatible, needs_synthoverlay};
@@ -9,7 +8,7 @@ use eframe::egui::{Color32, RichText};
 use log::{debug, error, info, warn, Level, LevelFilter, Log, Metadata, Record};
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
-use std::{fs, io};
+use std::{fs};
 
 pub struct GuiLogger {
     log_buffer: Mutex<Vec<LogEntry>>,
@@ -121,33 +120,64 @@ impl eframe::App for G4PatcherApp {
                 let apply_enabled = self.project_path.is_some() && self.patch.is_some();
                 if ui.add_enabled(apply_enabled, egui::Button::new("Apply Patch")).clicked() {
                     if needs_synthoverlay(&self.patch.clone().unwrap()) {
-                        if let Err(e) = run_armips(&self.patch.clone().unwrap(),
-                                                   &self.project_path.clone().unwrap(),
-                                                   &self.exe_dir,
-                                                   PREASSEMBLE_DIRECTIVE) {
-                            error!("Failed to assemble the patch: {e}");
-                        }
-                        let patch_size = fs::metadata(format!("{}/temp.bin", self.project_path.clone().unwrap()))
-                            .map_err(|e| Error::new(io::ErrorKind::NotFound, format!("Failed to read temp.bin: {}", e))).unwrap()
-                            .len() as usize;
-                        info!("Patch size: {patch_size} bytes");
-                        fs::remove_file(format!("{}/temp.bin", self.project_path.clone().unwrap()))
-                            .map_err(|e| Error::new(io::ErrorKind::NotFound, format!("Failed to delete temp.bin: {e}"))).unwrap();
-                        match handle_synthoverlay(&self.patch.clone().unwrap(), &self.project_path.clone().unwrap(), &self.game_version.clone().unwrap(), patch_size){
-                            Ok(()) => debug!("SynthOverlay handled successfully."),
+                        match run_armips(
+                            &self.patch.clone().unwrap(),
+                            &self.project_path.clone().unwrap(),
+                            &self.exe_dir,
+                            PREASSEMBLE_DIRECTIVE
+                        ) {
+                            Ok(()) => {
+                                let patch_path = self.project_path.clone().unwrap();
+                                match fs::metadata(format!("{}/temp.bin", patch_path)) {
+                                    Ok(metadata) => {
+                                        let patch_size = metadata.len() as usize;
+                                        info!("Patch size: {patch_size} bytes");
+
+                                        if let Err(e) = fs::remove_file(format!("{}/temp.bin", patch_path)) {
+                                            error!("Failed to delete temp.bin: {e}");
+                                            return;
+                                        }
+
+                                        match handle_synthoverlay(
+                                            &self.patch.clone().unwrap(),
+                                            &patch_path,
+                                            &self.game_version.clone().unwrap(),
+                                            patch_size
+                                        ) {
+                                            Ok(()) => debug!("SynthOverlay handled successfully."),
+                                            Err(e) => {
+                                                error!("Failed to handle synthOverlay: {e}");
+                                                return;
+                                            }
+                                        }
+                                    }
+                                    Err(e) => {
+                                        error!("Failed to read temp.bin: {e}");
+                                        return;
+                                    }
+                                }
+                            }
                             Err(e) => {
-                                warn!("Failed to handle synthOverlay: {e}");
-                                return
+                                error!("Failed to preassemble patch: {e}");
+                                return;
                             }
                         }
                     }
-                    if matches!(run_armips(&self.patch.clone().unwrap(), &self.project_path.clone().unwrap(), &self.exe_dir, PATCH_DIRECTIVE), Ok(())) {
-                        debug!("armips ran successfully.");
-                        info!("\nPatch applied! You can now repack your ROM.\n");
-                    } else {
-                        error!("there was an error running armips, please contact the developer with the log below.");
+
+                    match run_armips(
+                        &self.patch.clone().unwrap(),
+                        &self.project_path.clone().unwrap(),
+                        &self.exe_dir,
+                        PATCH_DIRECTIVE
+                    ) {
+                        Ok(()) => {
+                            debug!("armips ran successfully.");
+                            info!("\nPatch applied! You can now repack your ROM.\n");
+                        }
+                        Err(e) => {
+                            error!("Failed to apply patch: {}", e);
+                        }
                     }
-                    
                 }
             });
             ui.separator();

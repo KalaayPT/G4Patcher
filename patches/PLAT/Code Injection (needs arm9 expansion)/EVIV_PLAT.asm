@@ -20,6 +20,7 @@ DPadDown equ 128
 RButton equ 256
 LButton equ 512
 XButton equ 1024
+
 INJECT_ADDR equ 0x023C8000
 
 

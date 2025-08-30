@@ -26,19 +26,47 @@ fn run_armips(asm_path: &str, rom_dir: &str, exe_dir: &Path, armips_directive: &
         return Err(io::Error::new(io::ErrorKind::NotFound, "armips.exe not found"));
     }
 
-    if armips_directive == PREASSEMBLE_DIRECTIVE { 
+    let patch_path = Path::new(asm_path).canonicalize()?;
+    let mut cmd = Command::new(&armips_path);
+
+    // Configure command
+    cmd.current_dir(rom_dir)
+        .stderr(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped());
+
+    if armips_directive == PREASSEMBLE_DIRECTIVE {
         info!("Calculating patch size...");
-        Command::new(armips_path)
-            .args([asm_path, "-definelabel", PREASSEMBLE_DIRECTIVE, "1"])
-            .current_dir(rom_dir)
-            .status()?;
+        cmd.arg(&patch_path)
+            .arg("-definelabel")
+            .arg(PREASSEMBLE_DIRECTIVE)
+            .arg("1");
     } else {
         info!("Patching ROM with armips...");
-        Command::new(armips_path)
-            .args([asm_path, "-definelabel", PATCH_DIRECTIVE, "1"])
-            .current_dir(rom_dir)
-            .status()?;
+        cmd.arg(&patch_path)
+            .arg("-definelabel")
+            .arg(PATCH_DIRECTIVE)
+            .arg("1");
     }
+
+    let output = cmd.output()?;
+
+    // Always display armips output
+    if !output.stdout.is_empty() {
+        info!("{}", String::from_utf8_lossy(&output.stdout));
+    }
+    if !output.stderr.is_empty() {
+        error!("{}", String::from_utf8_lossy(&output.stderr));
+        return Err(io::Error::other(
+            String::from_utf8_lossy(&output.stderr).to_string()
+        ));
+    }
+
+    if !output.status.success() {
+        return Err(io::Error::other(
+            format!("armips failed with exit code {}", output.status.code().unwrap_or(-1))
+        ));
+    }
+
     Ok(())
 }
 
