@@ -1,22 +1,23 @@
 #![warn(clippy::nursery, clippy::pedantic)]
 
-use std::{fs, io};
+use crate::constants::{GAME_DEPENDENT_OVERLAY_HG, GAME_DEPENDENT_OVERLAY_PLAT};
+use crate::patcher::PatcherError;
+use crate::usage_checks::is_arm9_expanded;
+use log::info;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
-use log::info;
-use crate::constants::{GAME_DEPENDENT_OVERLAY_HG, GAME_DEPENDENT_OVERLAY_PLAT};
-use crate::usage_checks::is_arm9_expanded;
+use std::{fs, io};
 
 /// Determine the game overlay based on the patch name.
-/// 
+///
 /// # Arguments
 /// * `patch_path`: A string slice that holds the path to the patch file.
-/// 
+///
 /// # Returns
 /// A string that represents the game-dependent overlay:
 /// * `"0009"` for Pokémon Platinum
 /// * `"0000"` for Pokémon HeartGold/SoulSilver
-/// 
+///
 pub fn determine_game_overlay(patch_path: &str) -> &'static str {
     if patch_path.contains("_HG") {
         GAME_DEPENDENT_OVERLAY_HG
@@ -28,17 +29,17 @@ pub fn determine_game_overlay(patch_path: &str) -> &'static str {
 }
 
 /// Find the first aligned offset in the data where a block of `required_size` bytes is all zero.
-/// 
+///
 /// # Arguments
 /// * `data`: A slice of bytes representing the data to search through.
 /// * `required_size`: The size of the block of bytes that must be all zero for a valid injection point.
-/// 
+///
 /// # Returns
 /// An `Option<usize>` that contains the offset of the first valid injection point if found, or `None` if no such point exists.
-/// 
+///
 /// # Details
 /// This function iterates through the `data` slice, checking every 16-byte aligned offset to see if the next `required_size` bytes are all zero. If it finds such a block, it returns the starting index of that block. If no such block is found, it returns `None`.
-/// 
+///
 /// # Example
 /// ```
 /// let data = [0u8; 64]; // Example data with 64 bytes, all zero
@@ -63,19 +64,19 @@ pub fn find_injection_offset(data: &[u8], required_size: usize) -> Option<usize>
 }
 
 /// Insert a corrected offset into the assembly file at the specified path.
-/// 
+///
 /// # Arguments
 /// * `asm_path`: A string slice that holds the path to the assembly file.
 /// * `new_addr`: A `u32` representing the new address to insert into the assembly file.
-/// 
+///
 /// # Returns
 /// A `Result<PathBuf, io::Error>` where:
 /// * `Ok(PathBuf)` contains the path to the modified assembly file.
 /// * `Err(io::Error)` indicates an error occurred while reading or writing the file.
-/// 
+///
 /// # Details
 /// This function reads the assembly file line by line, looking for a line that contains the string `"INJECT_ADDR equ"`. When it finds this line, it replaces it with a new line that sets `INJECT_ADDR` to the specified `new_addr`, formatted as a hexadecimal value. It then writes all lines back to the same file.
-/// 
+///
 /// # Example Usage
 /// ```rust
 /// use synthoverlay_utils::insert_corrected_offset;
@@ -112,48 +113,49 @@ pub fn insert_corrected_offset(asm_path: &str, new_addr: u32) -> io::Result<Path
 }
 
 /// Handle the synthOverlay process for the specified patch and project.
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `patch_path`: A string slice that holds the path to the patch file.
 /// * `project_path`: A string slice that holds the path to the project directory.
 /// * `game_version`: A string slice that holds the game version, which can be one of:
-///     * `"Platinum"`  
+///     * `"Platinum"`
 ///     * `"HeartGold"`
 ///     * `"SoulSilver"`
-/// 
+///
 /// # Returns
-/// 
+///
 /// A `Result<(), io::Error>` where:
 /// * `Ok(())` indicates the process completed successfully.
 /// * `Err(io::Error)` indicates an error occurred during the process, such as file not found or read/write errors.
-/// 
+///
 /// # Details
-/// 
+///
 /// This function checks if the `arm9.bin` file has been expanded for the specified game version. If it has, it reads the `synthOverlay` file corresponding to the patch, finds the injection offset, and inserts a corrected offset into the assembly file specified by `patch_path`. If the `arm9.bin` is not expanded, it prompts the user to expand it before proceeding.
-pub fn handle_synthoverlay(patch_path: &str, project_path: &str, game_version: &str, required_size: usize) -> io::Result<()> {
-
-    // Check if the arm9 is expanded, if not, prompt the user to expand it
-    if is_arm9_expanded(project_path, game_version)? {
+pub fn handle_synthoverlay(
+    patch_path: &str,
+    project_path: &str,
+    game_version: &str,
+    required_size: usize,
+) -> Result<(), PatcherError> {
+    if is_arm9_expanded(project_path, game_version).map_err(PatcherError::IoError)? {
         info!("arm9 is expanded, proceeding");
     } else {
-        return Err(io::Error::other(
-            "arm9 is not expanded, please expand it before applying the patch.",
-        ));
+        return Err(PatcherError::Arm9NotExpanded);
     }
+
     // Read and process the synthOverlay file
     let synth_overlay_path = format!(
         "{}\\unpacked\\synthOverlay\\{}",
         project_path,
         determine_game_overlay(patch_path)
     );
-    let synth_overlay = fs::read(&synth_overlay_path)?;
-    info!(
-        "Read synthOverlay file successfully. Located at: {synth_overlay_path}"
-    );
+    let synth_overlay = fs::read(&synth_overlay_path).map_err(PatcherError::IoError)?;
+    info!("Read synthOverlay file successfully. Located at: {synth_overlay_path}");
+
     info!("Searching for injection offset");
     let offset =
-        find_injection_offset(&synth_overlay, required_size).expect("Failed to find injection offset");
+        find_injection_offset(&synth_overlay, required_size).ok_or(PatcherError::NoFreeSpace)?;
     info!(
         "Found injection offset at {:#X} in synthOverlay {}",
         offset,
@@ -162,7 +164,6 @@ pub fn handle_synthoverlay(patch_path: &str, project_path: &str, game_version: &
 
     let corrected_offset = 0x23c8000 + offset as u32;
     info!("Corrected offset: {corrected_offset:#X}");
-    insert_corrected_offset(patch_path, corrected_offset)
-        .expect("Failed to correct offset in asm file");
+    insert_corrected_offset(patch_path, corrected_offset).map_err(PatcherError::IoError)?;
     Ok(())
 }

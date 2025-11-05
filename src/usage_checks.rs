@@ -3,15 +3,15 @@
 use crate::constants::{
     HEARTGOLD, HEARTGOLD_BYTES, PLATINUM, PLATINUM_BYTES, SOULSILVER, SOULSILVER_BYTES,
 };
-use std::io::{BufRead, BufReader, Read, Seek, SeekFrom};
-use std::path::PathBuf;
-use std::{fs, io};
 use log::error;
+use std::io::{BufRead, BufReader, Read, Seek, SeekFrom};
+use std::path::{Path, PathBuf};
+use std::{fs, io};
 
 /// Determine the game version based on the header.bin file in the project path.
 ///
 /// # Arguments
-/// * `project_path`: A string slice that holds the path to the project directory where `header.bin` is located.
+/// * `project_path`: A path that holds the directory where `header.bin` is located.
 ///
 /// # Returns
 /// A string slice representing the game version, which can be one of:
@@ -26,8 +26,8 @@ use log::error;
 /// * Compares the read bytes against predefined constants for each game version.
 /// * If the bytes match, it returns the corresponding game version.
 /// * If the bytes do not match any known version, it panics with an error message indicating the unknown version and the bytes found.
-pub fn determine_game_version(project_path: &str) -> io::Result<&str> {
-    let header_path = PathBuf::from(project_path).join("header.bin");
+pub fn determine_game_version(project_path: &Path) -> io::Result<&str> {
+    let header_path = project_path.join("header.bin");
 
     fs::File::open(&header_path).map_or_else(|_| {
         Err(io::Error::new(io::ErrorKind::NotFound, "header.bin not found"))
@@ -52,7 +52,7 @@ pub fn determine_game_version(project_path: &str) -> io::Result<&str> {
 ///
 /// # Arguments
 /// * `patch_path`: A string slice that holds the path to the patch file.
-/// * `project_path`: A string slice that holds the path to the project directory.
+/// * `project_path`: A path that holds the project directory.
 ///
 /// # Returns
 /// A boolean value indicating whether the patch is compatible with the project:
@@ -68,32 +68,32 @@ pub fn determine_game_version(project_path: &str) -> io::Result<&str> {
 /// # Example Usage
 /// ```rust
 /// use usage_checks::is_patch_compatible;
+/// use std::path::Path;
 /// let patch_path = "/path/to/patch_HG.asm";
-/// let project_path = "/path/to/project";
+/// let project_path = Path::new("/path/to/project");
 /// if is_patch_compatible(patch_path, project_path) {
 ///    println!("The patch is compatible with the project.");
 /// } else {
 ///   println!("The patch is not compatible with the project.");
 /// }
 /// ```
-pub fn is_patch_compatible(patch_path: &str, project_path: &str) -> bool {
-    // Check if the patch path contains the project path
-    match determine_game_version(project_path).unwrap() {
-        PLATINUM if patch_path.contains("_PLAT") => true,
-        HEARTGOLD if patch_path.contains("_HG") => true,
-        SOULSILVER if patch_path.contains("_SS") => true,
+pub fn is_patch_compatible(patch_path: &str, project_path: &Path) -> bool {
+    match determine_game_version(project_path).ok() {
+        Some(PLATINUM) if patch_path.contains("_PLAT") => true,
+        Some(HEARTGOLD) if patch_path.contains("_HG") => true,
+        Some(SOULSILVER) if patch_path.contains("_SS") => true,
         _ => false,
     }
 }
 
 /// Check if the synthOverlay is needed based on the assembly file content.
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `asm_path`: A string slice that holds the path to the assembly file.
-/// 
+///
 /// # Returns
-/// 
+///
 /// A boolean value indicating whether the synthOverlay is needed:
 /// * `true` if the assembly file contains a line with `.open "unpacked/synthOverlay/"`.
 /// * `false` if the assembly file does not contain such a line.
