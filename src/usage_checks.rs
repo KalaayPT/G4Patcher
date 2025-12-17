@@ -190,7 +190,7 @@ pub fn is_arm9_expanded(project_path: &str, game_version: &str) -> io::Result<bo
             |mut file| {
                 if file.seek(SeekFrom::Start(0xCB4)).is_ok()
                     && file.read_exact(&mut buf).is_ok()
-                    && buf == [0x00, 0xF1, 0xB4, 0xF8]
+                    && buf == [0x00, 0xF1, 0x5E, 0xFC]
                 {
                     Ok(true)
                 } else {
