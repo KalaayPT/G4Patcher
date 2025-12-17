@@ -15,7 +15,7 @@ Please credit me (Kalaay) and the people behind the research for the patches if 
 
 ## 1. Usage:
 
-1. Download the latest [release](https://github.com/KalaayPT/g4patcher/releases)
+1. Download the latest [release](https://github.com/KalaayPT/g4patcher/releases) or run `cargo install G4Patcher` to install
 2. Run G4Patcher
 3. Select your unpacked ROM folder
 4. Select the patch
