@@ -1,7 +1,7 @@
 #![warn(clippy::nursery, clippy::pedantic)]
 
 /// The synthOverlay for Pokémon Platinum.
-pub const GAME_DEPENDENT_OVERLAY_PLAT: &str = "0009";
+pub const GAME_DEPENDENT_OVERLAY_PLAT: &str = "0065";
 
 /// The synthOverlay for Pokémon HeartGold/SoulSilver.
 pub const GAME_DEPENDENT_OVERLAY_HG: &str = "0000";

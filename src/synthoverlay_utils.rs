@@ -138,11 +138,11 @@ pub fn handle_synthoverlay(
     game_version: &str,
     required_size: usize,
 ) -> Result<(), PatcherError> {
-    if is_arm9_expanded(project_path, game_version).map_err(PatcherError::IoError)? {
-        info!("arm9 is expanded, proceeding");
-    } else {
-        return Err(PatcherError::Arm9NotExpanded);
-    }
+    //if is_arm9_expanded(project_path, game_version).map_err(PatcherError::IoError)? {
+    //    info!("arm9 is expanded, proceeding");
+    //} else {
+    //    return Err(PatcherError::Arm9NotExpanded);
+    //}
 
     // Read and process the synthOverlay file
     let synth_overlay_path = format!(
