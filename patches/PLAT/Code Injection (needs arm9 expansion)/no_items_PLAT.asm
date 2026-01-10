@@ -10,7 +10,7 @@ INJECT_ADDR equ 0x023C8000
 .open "overlay/overlay_0016.bin", 0x0223B140  ; Open the battle overlay
 
 .org 0x0224be98
-    
+
     bl no_items
     mov r0,r0
 
