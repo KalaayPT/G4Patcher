@@ -29,6 +29,11 @@
 .definelabel BuildPokemonSpriteTemplate, 0x02075FB4 ; Build sprite template from species params
 .definelabel Pokemon_BuildSpriteTemplate, 0x02075EF4 ; Build sprite template from Pokemon struct
 .definelabel CutIn_BuildPokemonSpriteTemplate, 0x0224508C ; Original function in overlay6
+.definelabel Pokemon_GetValue, 0x02074470            ; Get Pokemon data value
+.definelabel Sound_PlayPokemonCry, 0x02005844        ; Play cry by species
+.definelabel Pokemon_PlayCry, 0x02077E3C             ; Play cry from Pokemon struct
+.definelabel HMCutIn_SlideMonToCenter, 0x02244228    ; Function that plays the cry
+.definelabel Pokemon_PlayCry_CallSite, 0x02244248    ; BL Pokemon_PlayCry in HMCutIn_SlideMonToCenter
 ; =====================================================================
 ; CONSTANTS
 ; =====================================================================
@@ -40,9 +45,14 @@ HEAP_ID_FIELD2              equ 11     ; Heap ID for field operations
 TRUE                        equ 1
 FALSE                       equ 0
 SPECIES_STARAVIA            equ 397
+MOVE_FLY                    equ 19
+MON_DATA_MOVE1              equ 54
+MON_DATA_MOVE2              equ 55
+MON_DATA_MOVE3              equ 56
+MON_DATA_MOVE4              equ 57
 ; =====================================================================
 
-INJECT_ADDR equ 0x023C8940
+INJECT_ADDR equ 0x023C8A70
 
 .ifdef PATCH
 .open "arm9.bin", 0x02000000
@@ -66,6 +76,35 @@ INJECT_ADDR equ 0x023C8940
     ldr     r3, =staravia_cutin_hook+1  ; Load address of our hook (+1 for THUMB mode)
     bx      r3                          ; Jump to hook
     .pool                               ; Pool for the address constant
+
+; =====================================================================
+; OVERLAY 6 HOOK - Replace Pokemon_PlayCry call
+; This makes the fly cut-in play Staravia's cry if needed
+; =====================================================================
+; Problem: ldr+bx needs a pool within 1020 bytes, but putting the pool
+; right after the instruction would overwrite following code.
+; Solution: Use bl to reach a veneer at the end of overlay6, which then
+; jumps to our hook in the synth overlay.
+
+.org Pokemon_PlayCry_CallSite
+    ; Replace the bl Pokemon_PlayCry with bl to our veneer
+    ; Context: r4 = cutIn, r0 = cutIn->pokemon
+    ; bl range in THUMB is ±4MB, easily reaches the veneer
+    bl      cry_hook_veneer
+
+; =====================================================================
+; VENEER - Placed near end of overlay6 (padding area)
+; This veneer bridges the gap to the synth overlay
+; =====================================================================
+; Overlay6 ends at 0x0223E140 + 0xB800 = 0x02249940
+; We place the veneer at offset 0xB700 = 0x02249840, safely in padding
+.org 0x02249840
+cry_hook_veneer:
+    ; r0 = pokemon (from caller), r4 = cutIn, lr = return address
+    ; We need to pass these to the hook
+    ldr     r3, =staravia_cry_hook+1
+    bx      r3
+    .pool
 
 .close
 
@@ -232,15 +271,16 @@ fly_check_false:
 ; =====================================================================
 ; STARAVIA FLY CUT-IN HOOK
 ; =====================================================================
-; This hook replaces CutIn_BuildPokemonSpriteTemplate to always show
-; Staravia in the fly cut-in animation instead of the selected Pokemon.
+; This hook replaces CutIn_BuildPokemonSpriteTemplate to show Staravia
+; in the fly cut-in animation ONLY if the selected Pokemon doesn't know Fly.
+; If the Pokemon knows Fly, show the original Pokemon.
 ;
 ; Original function signature:
 ;   void CutIn_BuildPokemonSpriteTemplate(HMCutIn *cutIn, PokemonSpriteTemplate *spriteTemplate)
 ;
-; Our replacement calls BuildPokemonSpriteTemplate directly with Staravia:
-;   void BuildPokemonSpriteTemplate(PokemonSpriteTemplate *spriteTemplate, u16 species,
-;                                    u8 gender, u8 face, u8 shiny, u8 form, u32 personality)
+; Our replacement:
+;   - If Fly cut-in AND Pokemon doesn't know Fly: use Staravia
+;   - Otherwise: use the original Pokemon
 ; =====================================================================
 
 .align 2
@@ -249,51 +289,158 @@ fly_check_false:
 
 staravia_cutin_hook:
     ; Input: r0 = cutIn (HMCutIn*), r1 = spriteTemplate
-    ; We need to check if this is a Fly cut-in (cutIn->_1 == TRUE)
-    ; If so, use Staravia. Otherwise, call original Pokemon_BuildSpriteTemplate.
     ;
     ; HMCutIn structure offsets:
-    ;   offset 0x20 = _1 (isNotFly, but actually TRUE means IS Fly)
+    ;   offset 0x20 = _1 (TRUE means IS Fly animation)
     ;   offset 0x5C = pokemon (Pokemon*)
 
-    push    {r4, r5, lr}                ; Save registers
+    push    {r4-r6, lr}                 ; Save registers
     mov     r4, r0                      ; r4 = cutIn
     mov     r5, r1                      ; r5 = spriteTemplate
 
     ; Check if this is a Fly cut-in
-    ; cutIn->_1 is at offset 0x20 (32 bytes)
     ldr     r0, [r4, #0x20]             ; r0 = cutIn->_1
     cmp     r0, #TRUE                   ; Is this the Fly animation?
-    beq     use_staravia                ; Yes, use Staravia
+    bne     use_original_pokemon        ; No, use original Pokemon
 
-    ; Not Fly - call original Pokemon_BuildSpriteTemplate with the party Pokemon
-    mov     r0, r5                      ; r0 = spriteTemplate
-    ldr     r1, [r4, #0x5C]             ; r1 = cutIn->pokemon
-    mov     r2, #2                      ; r2 = face = FACE_FRONT
-    bl      Pokemon_BuildSpriteTemplate
-    pop     {r4, r5, pc}                ; Return
+    ; It's a Fly cut-in - check if Pokemon knows Fly
+    ldr     r6, [r4, #0x5C]             ; r6 = cutIn->pokemon
+    mov     r0, r6                      ; r0 = pokemon
+    bl      pokemon_knows_fly           ; Returns TRUE if knows Fly
+    cmp     r0, #TRUE
+    beq     use_original_pokemon        ; Pokemon knows Fly, show it
 
-use_staravia:
-    ; Fly animation - use Staravia
+    ; Pokemon doesn't know Fly - use Staravia
     ; Call BuildPokemonSpriteTemplate(spriteTemplate, 397, 0, 2, 0, 0, 0)
     mov     r0, r5                      ; r0 = spriteTemplate
     ldr     r1, =SPECIES_STARAVIA       ; r1 = species = 397 (Staravia)
     mov     r2, #0                      ; r2 = gender = 0 (male)
     mov     r3, #2                      ; r3 = face = 2 (FACE_FRONT)
 
-    ; Push remaining args to stack (personality, form, shiny - in reverse order)
-    mov     r4, #0                      ; r4 = 0
-    push    {r4}                        ; Push personality = 0
-    push    {r4}                        ; Push form = 0
-    push    {r4}                        ; Push shiny = 0
+    ; Push remaining args to stack (shiny, form, personality)
+    mov     r6, #0
+    push    {r6}                        ; Push personality = 0
+    push    {r6}                        ; Push form = 0
+    push    {r6}                        ; Push shiny = 0
 
     bl      BuildPokemonSpriteTemplate
 
     add     sp, #12                     ; Clean up stack (3 * 4 bytes)
-    pop     {r4, r5, pc}                ; Return
+    pop     {r4-r6, pc}                 ; Return
+
+use_original_pokemon:
+    ; Use the original Pokemon
+    mov     r0, r5                      ; r0 = spriteTemplate
+    ldr     r1, [r4, #0x5C]             ; r1 = cutIn->pokemon
+    mov     r2, #2                      ; r2 = face = FACE_FRONT
+    bl      Pokemon_BuildSpriteTemplate
+    pop     {r4-r6, pc}                 ; Return
 
     .pool
 
+; =====================================================================
+; Helper function: Check if Pokemon knows Fly
+; Input: r0 = Pokemon*
+; Output: r0 = TRUE if knows Fly, FALSE otherwise
+; =====================================================================
+pokemon_knows_fly:
+    push    {r4-r5, lr}
+    mov     r4, r0                      ; r4 = pokemon
+
+    ; Check move slot 1
+    mov     r1, #MON_DATA_MOVE1
+    mov     r2, #0                      ; dest = NULL
+    bl      Pokemon_GetValue
+    cmp     r0, #MOVE_FLY
+    beq     knows_fly_true
+
+    ; Check move slot 2
+    mov     r0, r4
+    mov     r1, #MON_DATA_MOVE2
+    mov     r2, #0
+    bl      Pokemon_GetValue
+    cmp     r0, #MOVE_FLY
+    beq     knows_fly_true
+
+    ; Check move slot 3
+    mov     r0, r4
+    mov     r1, #MON_DATA_MOVE3
+    mov     r2, #0
+    bl      Pokemon_GetValue
+    cmp     r0, #MOVE_FLY
+    beq     knows_fly_true
+
+    ; Check move slot 4
+    mov     r0, r4
+    mov     r1, #MON_DATA_MOVE4
+    mov     r2, #0
+    bl      Pokemon_GetValue
+    cmp     r0, #MOVE_FLY
+    beq     knows_fly_true
+
+    ; Doesn't know Fly
+    mov     r0, #FALSE
+    pop     {r4-r5, pc}
+
+knows_fly_true:
+    mov     r0, #TRUE
+    pop     {r4-r5, pc}
+
 .ascii "staravia_cutin_end"
+
+; =====================================================================
+; STARAVIA CRY HOOK
+; =====================================================================
+; This hook is called from the cry_hook_veneer in overlay6.
+; It plays Staravia's cry if using Map Fly, otherwise plays the
+; original Pokemon's cry.
+;
+; Entry conditions (from HMCutIn_SlideMonToCenter):
+;   r0 = cutIn->pokemon (Pokemon*)
+;   r4 = cutIn (HMCutIn*)
+;   lr = return address (back to HMCutIn_SlideMonToCenter)
+;
+; Note: bl from the veneer clobbered original lr, but the veneer's
+; bx r3 means lr still points back to HMCutIn_SlideMonToCenter+4.
+; Actually, bl sets lr, so we need to be careful about the return.
+; =====================================================================
+
+.align 2
+.ascii "staravia_cry_start"
+.align 2
+
+staravia_cry_hook:
+    ; r0 = pokemon, r4 = cutIn (preserved from caller), lr = return addr
+    push    {r4-r6, lr}
+    mov     r5, r0                      ; r5 = pokemon
+    mov     r6, r4                      ; r6 = cutIn (backup)
+
+    ; Check if this is a Fly cut-in
+    ldr     r0, [r6, #0x20]             ; r0 = cutIn->_1
+    cmp     r0, #TRUE
+    bne     play_original_cry           ; Not Fly animation, use original
+
+    ; It's a Fly cut-in - check if Pokemon knows Fly
+    mov     r0, r5                      ; r0 = pokemon
+    bl      pokemon_knows_fly
+    cmp     r0, #TRUE
+    beq     play_original_cry           ; Pokemon knows Fly, use its cry
+
+    ; Pokemon doesn't know Fly - play Staravia's cry
+    ; Sound_PlayPokemonCry(species, form)
+    ldr     r0, =SPECIES_STARAVIA       ; r0 = 397 (Staravia)
+    mov     r1, #0                      ; r1 = form = 0
+    bl      Sound_PlayPokemonCry
+    pop     {r4-r6, pc}
+
+play_original_cry:
+    ; Play the original Pokemon's cry
+    mov     r0, r5                      ; r0 = pokemon
+    bl      Pokemon_PlayCry
+    pop     {r4-r6, pc}
+
+    .pool
+
+.ascii "staravia_cry_end"
 
 .close
