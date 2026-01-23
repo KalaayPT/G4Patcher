@@ -4,6 +4,9 @@
 ; open the Town Map in FLY mode when the player has HM02, the Cobble Badge,
 ; and is on a map where Fly is allowed.
 ;
+; Additionally, this patch makes the Fly cut-in animation always show Staravia
+; instead of the selected party Pokemon (for the "Map Fly" feature).
+;
 ; Credits: The pokeplatinum team for decompiling the game
 
 .nds
@@ -23,6 +26,9 @@
 .definelabel SaveData_Ptr, 0x020245A4
 .definelabel GetContextMenuEntriesForPartyMon, 0x020800B4
 .definelabel PartyMenu_SetKnownFieldMove, 0x02081CAC
+.definelabel BuildPokemonSpriteTemplate, 0x02075FB4 ; Build sprite template from species params
+.definelabel Pokemon_BuildSpriteTemplate, 0x02075EF4 ; Build sprite template from Pokemon struct
+.definelabel CutIn_BuildPokemonSpriteTemplate, 0x0224508C ; Original function in overlay6
 ; =====================================================================
 ; CONSTANTS
 ; =====================================================================
@@ -33,9 +39,10 @@ ITEM_HM02                   equ 0x01A5 ; 421 decimal
 HEAP_ID_FIELD2              equ 11     ; Heap ID for field operations
 TRUE                        equ 1
 FALSE                       equ 0
+SPECIES_STARAVIA            equ 397
 ; =====================================================================
 
-INJECT_ADDR equ 0x023C8280
+INJECT_ADDR equ 0x023C8940
 
 .ifdef PATCH
 .open "arm9.bin", 0x02000000
@@ -43,6 +50,22 @@ INJECT_ADDR equ 0x023C8280
 ; Replace the call to GetContextMenuEntriesForPartyMon in sub_0207FFC8
 .org 0x02080024
     bl fly_in_menu
+
+.close
+
+; =====================================================================
+; OVERLAY 6 HOOK - Replace CutIn_BuildPokemonSpriteTemplate
+; This makes the fly cut-in always show Staravia
+; =====================================================================
+.open "overlay/overlay_0006.bin", 0x0223E140
+
+.org CutIn_BuildPokemonSpriteTemplate
+    ; Original function: CutIn_BuildPokemonSpriteTemplate(HMCutIn *cutIn, PokemonSpriteTemplate *spriteTemplate)
+    ; We replace it with a BL to our hook in synth overlay
+    ; r0 = cutIn (unused), r1 = spriteTemplate
+    ldr     r3, =staravia_cutin_hook+1  ; Load address of our hook (+1 for THUMB mode)
+    bx      r3                          ; Jump to hook
+    .pool                               ; Pool for the address constant
 
 .close
 
@@ -205,5 +228,72 @@ fly_check_false:
     .pool
 
 .ascii "map_as_fly_end"
+
+; =====================================================================
+; STARAVIA FLY CUT-IN HOOK
+; =====================================================================
+; This hook replaces CutIn_BuildPokemonSpriteTemplate to always show
+; Staravia in the fly cut-in animation instead of the selected Pokemon.
+;
+; Original function signature:
+;   void CutIn_BuildPokemonSpriteTemplate(HMCutIn *cutIn, PokemonSpriteTemplate *spriteTemplate)
+;
+; Our replacement calls BuildPokemonSpriteTemplate directly with Staravia:
+;   void BuildPokemonSpriteTemplate(PokemonSpriteTemplate *spriteTemplate, u16 species,
+;                                    u8 gender, u8 face, u8 shiny, u8 form, u32 personality)
+; =====================================================================
+
+.align 2
+.ascii "staravia_cutin_start"
+.align 2
+
+staravia_cutin_hook:
+    ; Input: r0 = cutIn (HMCutIn*), r1 = spriteTemplate
+    ; We need to check if this is a Fly cut-in (cutIn->_1 == TRUE)
+    ; If so, use Staravia. Otherwise, call original Pokemon_BuildSpriteTemplate.
+    ;
+    ; HMCutIn structure offsets:
+    ;   offset 0x20 = _1 (isNotFly, but actually TRUE means IS Fly)
+    ;   offset 0x5C = pokemon (Pokemon*)
+
+    push    {r4, r5, lr}                ; Save registers
+    mov     r4, r0                      ; r4 = cutIn
+    mov     r5, r1                      ; r5 = spriteTemplate
+
+    ; Check if this is a Fly cut-in
+    ; cutIn->_1 is at offset 0x20 (32 bytes)
+    ldr     r0, [r4, #0x20]             ; r0 = cutIn->_1
+    cmp     r0, #TRUE                   ; Is this the Fly animation?
+    beq     use_staravia                ; Yes, use Staravia
+
+    ; Not Fly - call original Pokemon_BuildSpriteTemplate with the party Pokemon
+    mov     r0, r5                      ; r0 = spriteTemplate
+    ldr     r1, [r4, #0x5C]             ; r1 = cutIn->pokemon
+    mov     r2, #2                      ; r2 = face = FACE_FRONT
+    bl      Pokemon_BuildSpriteTemplate
+    pop     {r4, r5, pc}                ; Return
+
+use_staravia:
+    ; Fly animation - use Staravia
+    ; Call BuildPokemonSpriteTemplate(spriteTemplate, 397, 0, 2, 0, 0, 0)
+    mov     r0, r5                      ; r0 = spriteTemplate
+    ldr     r1, =SPECIES_STARAVIA       ; r1 = species = 397 (Staravia)
+    mov     r2, #0                      ; r2 = gender = 0 (male)
+    mov     r3, #2                      ; r3 = face = 2 (FACE_FRONT)
+
+    ; Push remaining args to stack (personality, form, shiny - in reverse order)
+    mov     r4, #0                      ; r4 = 0
+    push    {r4}                        ; Push personality = 0
+    push    {r4}                        ; Push form = 0
+    push    {r4}                        ; Push shiny = 0
+
+    bl      BuildPokemonSpriteTemplate
+
+    add     sp, #12                     ; Clean up stack (3 * 4 bytes)
+    pop     {r4, r5, pc}                ; Return
+
+    .pool
+
+.ascii "staravia_cutin_end"
 
 .close
