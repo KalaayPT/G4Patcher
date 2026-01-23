@@ -52,7 +52,7 @@ MON_DATA_MOVE3              equ 56
 MON_DATA_MOVE4              equ 57
 ; =====================================================================
 
-INJECT_ADDR equ 0x023C8A70
+INJECT_ADDR equ 0x023C8510
 
 .ifdef PATCH
 .open "arm9.bin", 0x02000000
@@ -81,30 +81,10 @@ INJECT_ADDR equ 0x023C8A70
 ; OVERLAY 6 HOOK - Replace Pokemon_PlayCry call
 ; This makes the fly cut-in play Staravia's cry if needed
 ; =====================================================================
-; Problem: ldr+bx needs a pool within 1020 bytes, but putting the pool
-; right after the instruction would overwrite following code.
-; Solution: Use bl to reach a veneer at the end of overlay6, which then
-; jumps to our hook in the synth overlay.
-
 .org Pokemon_PlayCry_CallSite
-    ; Replace the bl Pokemon_PlayCry with bl to our veneer
+    ; Replace the bl Pokemon_PlayCry with bl to our hook
     ; Context: r4 = cutIn, r0 = cutIn->pokemon
-    ; bl range in THUMB is ±4MB, easily reaches the veneer
-    bl      cry_hook_veneer
-
-; =====================================================================
-; VENEER - Placed near end of overlay6 (padding area)
-; This veneer bridges the gap to the synth overlay
-; =====================================================================
-; Overlay6 ends at 0x0223E140 + 0xB800 = 0x02249940
-; We place the veneer at offset 0xB700 = 0x02249840, safely in padding
-.org 0x02249840
-cry_hook_veneer:
-    ; r0 = pokemon (from caller), r4 = cutIn, lr = return address
-    ; We need to pass these to the hook
-    ldr     r3, =staravia_cry_hook+1
-    bx      r3
-    .pool
+    bl      staravia_cry_hook
 
 .close
 
