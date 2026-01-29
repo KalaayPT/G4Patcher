@@ -1,0 +1,3 @@
+[submodule "armips"]
+	path = armips
+	url = https://github.com/KalaayPT/armips.git
