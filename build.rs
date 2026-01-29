@@ -70,22 +70,26 @@ fn build_armips() {
     eprintln!("Build dir: {}", build_path);
 
     // Configure
-    let cmake_args = [
-        format!("-S {}", armips_path),
-        format!("-B {}", build_path),
-        "-GNinja".to_string(),
-        "-DARMIPS_LIBRARY_ONLY=ON".to_string(),
-        "-DARMIPS_USE_STD_FILESYSTEM=ON".to_string(),
-        "-DCMAKE_BUILD_TYPE=Release".to_string(),
-    ];
-
     let status = if use_bash {
+        let cmake_args = format!(
+            "-S {} -B {} -GNinja -DARMIPS_LIBRARY_ONLY=ON -DARMIPS_USE_STD_FILESYSTEM=ON -DCMAKE_BUILD_TYPE=Release",
+            armips_path, build_path
+        );
         Command::new("bash")
             .arg("-c")
-            .arg(format!("cmake {}", cmake_args.join(" ")))
+            .arg(format!("cmake {}", cmake_args))
             .status()
     } else {
-        Command::new("cmake").args(&cmake_args).status()
+        Command::new("cmake")
+            .arg("-S")
+            .arg(&armips_path)
+            .arg("-B")
+            .arg(&build_path)
+            .arg("-GNinja")
+            .arg("-DARMIPS_LIBRARY_ONLY=ON")
+            .arg("-DARMIPS_USE_STD_FILESYSTEM=ON")
+            .arg("-DCMAKE_BUILD_TYPE=Release")
+            .status()
     }
     .expect("Failed to run cmake configure");
 
