@@ -9,7 +9,7 @@ This program is purely cli. It prompts you to select an unpacked ROM folder (suc
 
 After checking these things, it adjusts the patch file with the corrected injection address and runs the patch through armips.
 
-An [armips](https://github.com/Kingcom/armips) binary is bundled into the release, so no need to install anything!
+This tool uses [armips](https://github.com/Kingcom/armips) via FFI - the armips library is compiled from source and linked directly into the binary.
 
 Please credit me (Kalaay) and the people behind the research for the patches if you use them in your own projects. Credits for research can always be found in the patch files themselves, as well as in the [wiki](https://github.com/KalaayPT/G4Patcher/wiki)
 
@@ -33,18 +33,31 @@ can now be found [in the wiki](https://github.com/KalaayPT/G4Patcher/wiki/Includ
 
 ## 4. Build Instructions:
 
-1. Install Rust and Cargo: Follow the instructions at https://www.rust-lang.org/tools/install
-2. Clone the repository:
+### Prerequisites
+- Rust and Cargo: https://www.rust-lang.org/tools/install
+- CMake 3.10+ and Ninja
+- C++ compiler (gcc/g++ on Linux, clang on macOS, MSVC on Windows)
+
+### Building
+
+1. Clone the repository with submodules:
 ```bash
-git clone https://github.com/KalaayPT/G4Patcher.git
+git clone --recursive https://github.com/KalaayPT/G4Patcher.git
 cd G4Patcher
 ```
-3. Build the project:
+
+2. Build the project:
 ```bash
-cargo build
+cargo build --release
 ```
-4. Find the executable in target/release/g4patcher
-5. Run G4Patcher
+
+3. Find the executable in `target/release/g4patcher`
+
+## Credits
+
+- **G4Patcher**: Kalaay (KalayPT)
+- **armips assembler**: [Kingcom](https://github.com/Kingcom/armips) - The powerful assembler that makes the code injection possible
+- **Patch research**: Various contributors (credits in individual patch files and [wiki](https://github.com/KalaayPT/G4Patcher/wiki))
 
 ## 5. Contributing:
 
