@@ -53,12 +53,6 @@ cargo build --release
 
 3. Find the executable in `target/release/g4patcher`
 
-## Credits
-
-- **G4Patcher**: Kalaay (KalayPT)
-- **armips assembler**: [Kingcom](https://github.com/Kingcom/armips) - The powerful assembler that makes the code injection possible
-- **Patch research**: Various contributors (credits in individual patch files and [wiki](https://github.com/KalaayPT/G4Patcher/wiki))
-
 ## 5. Contributing:
 
 If you want to contribute your own patches, you can use the included ones as templates as to what yours are supposed to look like. 
@@ -86,3 +80,9 @@ INJECT_ADDR equ 0x023C8000
 .org INJECT_ADDR
 ```
 so that the script is able to adjust the injection address and preassemble to calculate patch size.
+
+## Credits
+
+- **G4Patcher**: Kalaay (KalaayPT)
+- **armips assembler**: [Kingcom](https://github.com/Kingcom/armips) - The powerful assembler that makes the code injection possible
+- **Patch research**: Various contributors (credits in individual patch files and [wiki](https://github.com/KalaayPT/G4Patcher/wiki))
