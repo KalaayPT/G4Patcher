@@ -145,13 +145,15 @@ pub fn handle_synthoverlay(
     }
 
     // Read and process the synthOverlay file
-    let synth_overlay_path = format!(
-        "{}\\unpacked\\synthOverlay\\{}",
-        project_path,
-        determine_game_overlay(patch_path)
-    );
+    let synth_overlay_path = PathBuf::from(project_path)
+        .join("unpacked")
+        .join("synthOverlay")
+        .join(determine_game_overlay(patch_path));
     let synth_overlay = fs::read(&synth_overlay_path).map_err(PatcherError::IoError)?;
-    info!("Read synthOverlay file successfully. Located at: {synth_overlay_path}");
+    info!(
+        "Read synthOverlay file successfully. Located at: {}",
+        synth_overlay_path.display()
+    );
 
     info!("Searching for injection offset");
     let offset =

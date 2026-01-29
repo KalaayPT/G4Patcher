@@ -1,12 +1,12 @@
 #![warn(clippy::nursery)]
 
+use crate::armips_ffi::{assemble, ArmipsArgsBuilder};
 use crate::constants::{PATCH_DIRECTIVE, PREASSEMBLE_DIRECTIVE};
 use crate::synthoverlay_utils::handle_synthoverlay;
 use crate::usage_checks::{determine_game_version, is_patch_compatible, needs_synthoverlay};
 use log::{error, info};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 /// Errors that can occur during patching operations
 #[derive(Debug)]
@@ -21,8 +21,6 @@ pub enum PatcherError {
     IncompatiblePatch { patch: String, rom: String },
     /// arm9.bin is not expanded (required for code injection)
     Arm9NotExpanded,
-    /// armips executable not found
-    ArmipsNotFound,
     /// armips failed during execution
     ArmipsFailed(String),
     /// Could not find free space in synthOverlay
@@ -43,7 +41,6 @@ impl std::fmt::Display for PatcherError {
                 write!(f, "Patch '{}' is not compatible with ROM '{}'", patch, rom)
             }
             Self::Arm9NotExpanded => write!(f, "arm9.bin is not expanded. Please expand it before applying code injection patches."),
-            Self::ArmipsNotFound => write!(f, "armips.exe not found in assets folder"),
             Self::ArmipsFailed(msg) => write!(f, "armips failed: {msg}"),
             Self::NoFreeSpace => write!(f, "Could not find free space in synthOverlay"),
             Self::IoError(e) => write!(f, "I/O error: {e}"),
@@ -196,51 +193,32 @@ impl PatcherCore {
         Ok(())
     }
 
-    /// Run armips with a specific directive (PREASSEMBLE or PATCH)
+    /// Run armips with a specific directive (PREASSEMBLE or PATCH) using FFI
     fn run_armips_pass(
         &self,
         patch_path: &Path,
         rom_path: &Path,
         directive: &str,
     ) -> Result<(), PatcherError> {
-        let armips_path = self.exe_dir.join("assets").join("armips.exe");
-
-        if !armips_path.exists() {
-            error!("armips.exe not found at {}", armips_path.display());
-            return Err(PatcherError::ArmipsNotFound);
-        }
-
         let canonical_patch = patch_path.canonicalize()?;
+        let canonical_rom = rom_path.canonicalize()?;
 
-        let mut cmd = Command::new(&armips_path);
-        cmd.current_dir(rom_path)
-            .stderr(std::process::Stdio::piped())
-            .stdout(std::process::Stdio::piped())
-            .arg(&canonical_patch)
-            .arg("-definelabel")
-            .arg(directive)
-            .arg("1");
+        let result = assemble(
+            ArmipsArgsBuilder::new()
+                .input_file(&canonical_patch)
+                .working_dir(&canonical_rom)
+                .define(directive, "1")
+                .silent(true),
+        );
 
-        let output = cmd.output()?;
-
-        // Log stdout
-        if !output.stdout.is_empty() {
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            info!("{}", stdout);
-        }
-
-        // Check for errors
-        if !output.stderr.is_empty() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            error!("{}", stderr);
-            return Err(PatcherError::ArmipsFailed(stderr.to_string()));
-        }
-
-        if !output.status.success() {
-            return Err(PatcherError::ArmipsFailed(format!(
-                "Exit code: {}",
-                output.status.code().unwrap_or(-1)
-            )));
+        if !result.success {
+            let error_msg = if result.errors.is_empty() {
+                "Assembly failed".to_string()
+            } else {
+                result.errors.join("\n")
+            };
+            error!("armips failed: {}", error_msg);
+            return Err(PatcherError::ArmipsFailed(error_msg));
         }
 
         Ok(())
