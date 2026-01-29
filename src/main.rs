@@ -1,6 +1,7 @@
 #![windows_subsystem = "windows"]
 #![warn(clippy::nursery)]
 
+mod armips_ffi;
 mod constants;
 mod filedialog;
 mod gui;
