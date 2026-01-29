@@ -94,19 +94,23 @@ fn build_armips() {
     }
 
     // Build
-    let build_args = [
-        format!("--build {}", build_path),
-        "--config Release".to_string(),
-        "--target armips".to_string(),
-    ];
-
     let status = if use_bash {
         Command::new("bash")
             .arg("-c")
-            .arg(format!("cmake {}", build_args.join(" ")))
+            .arg(format!(
+                "cmake --build {} --config Release --target armips",
+                build_path
+            ))
             .status()
     } else {
-        Command::new("cmake").args(&build_args).status()
+        Command::new("cmake")
+            .arg("--build")
+            .arg(&build_path)
+            .arg("--config")
+            .arg("Release")
+            .arg("--target")
+            .arg("armips")
+            .status()
     }
     .expect("Failed to run cmake build");
 
@@ -117,8 +121,15 @@ fn build_armips() {
     println!("cargo:rustc-link-search=native={}", build_path);
     println!("cargo:rustc-link-lib=static=armips");
 
-    if cfg!(target_os = "windows") {
+    // Link C++ standard library
+    if cfg!(target_os = "macos") {
+        println!("cargo:rustc-link-lib=c++");
+    } else if cfg!(target_os = "windows") {
         println!("cargo:rustc-link-lib=shlwapi");
+        // Windows may need additional C++ runtime linking depending on the toolchain
+    } else {
+        // Linux and other Unix-like systems
+        println!("cargo:rustc-link-lib=stdc++");
     }
 
     println!("cargo:rerun-if-changed=armips/ffi");

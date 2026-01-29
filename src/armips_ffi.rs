@@ -131,9 +131,44 @@ extern "C" {
 }
 
 pub fn assemble(builder: ArmipsArgsBuilder) -> AssemblyResult {
-    let mut args = builder.into_ffi_args();
-    let args_ptr = &mut args as *mut ArmipsFFIArgs;
+    // Build FFI args while keeping the builder alive so CString values aren't dropped
+    let input_file_ptr = builder
+        .input_file
+        .as_ref()
+        .map_or(ptr::null(), |s| s.as_ptr());
+    let working_dir_ptr = builder
+        .working_dir
+        .as_ref()
+        .map_or(ptr::null(), |s| s.as_ptr());
+    let temp_file_ptr = builder
+        .temp_file
+        .as_ref()
+        .map_or(ptr::null(), |s| s.as_ptr());
+    let sym_file_ptr = builder
+        .sym_file
+        .as_ref()
+        .map_or(ptr::null(), |s| s.as_ptr());
 
+    let mut args = ArmipsFFIArgs {
+        input_file: input_file_ptr,
+        working_dir: working_dir_ptr,
+        temp_file: temp_file_ptr,
+        sym_file: sym_file_ptr,
+        sym_version: builder.sym_version,
+        defines: if builder.define_ptrs.is_empty() {
+            ptr::null()
+        } else {
+            builder.define_ptrs.as_ptr()
+        },
+        define_count: builder.define_ptrs.len(),
+        error_on_warning: builder.error_on_warning as c_int,
+        silent: builder.silent as c_int,
+        show_stats: builder.show_stats as c_int,
+        errors: ptr::null_mut(),
+        error_count: 0,
+    };
+
+    let args_ptr = &mut args as *mut ArmipsFFIArgs;
     let success = unsafe { armips_assemble(args_ptr) } == 0;
 
     let mut errors = Vec::new();
@@ -171,14 +206,15 @@ mod tests {
     use std::fs;
     use std::path::PathBuf;
 
-    fn test_dir() -> PathBuf {
+    fn test_dir(test_name: &str) -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("target")
             .join("test_output")
+            .join(test_name)
     }
 
-    fn setup() -> PathBuf {
-        let dir = test_dir();
+    fn setup(test_name: &str) -> PathBuf {
+        let dir = test_dir(test_name);
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         dir
@@ -195,13 +231,12 @@ mod tests {
 
     #[test]
     fn test_simple_assembly() {
-        let test_dir = setup();
+        let test_dir = setup("simple_assembly");
         let asm_path = test_dir.join("test.asm");
 
         let asm_content = r#".nds
-.create "output.bin",0
-
 .thumb
+.create "simple_output.bin",0x0
 
 main:
     mov r0, #1
@@ -214,10 +249,14 @@ main:
 
         fs::write(&asm_path, asm_content).unwrap();
 
+        // Canonicalize paths for armips FFI
+        let canonical_dir = test_dir.canonicalize().unwrap();
+        let canonical_asm = asm_path.canonicalize().unwrap();
+
         let result = assemble(
             ArmipsArgsBuilder::new()
-                .input_file(&asm_path)
-                .working_dir(&test_dir)
+                .input_file(&canonical_asm)
+                .working_dir(&canonical_dir)
                 .silent(true),
         );
 
@@ -235,13 +274,12 @@ main:
 
     #[test]
     fn test_assembly_with_define() {
-        let test_dir = setup();
+        let test_dir = setup("assembly_with_define");
         let asm_path = test_dir.join("test.asm");
 
         let asm_content = r#".nds
-.create "output.bin",0
-
 .thumb
+.create "define_output.bin",0x0
 
 .if defined(TEST_DEFINE)
     mov r0, #TEST_VALUE
@@ -255,10 +293,14 @@ main:
 
         fs::write(&asm_path, asm_content).unwrap();
 
+        // Canonicalize paths for armips FFI
+        let canonical_dir = test_dir.canonicalize().unwrap();
+        let canonical_asm = asm_path.canonicalize().unwrap();
+
         let result = assemble(
             ArmipsArgsBuilder::new()
-                .input_file(&asm_path)
-                .working_dir(&test_dir)
+                .input_file(&canonical_asm)
+                .working_dir(&canonical_dir)
                 .define("TEST_DEFINE", "1")
                 .define("TEST_VALUE", "42")
                 .silent(true),
@@ -271,26 +313,29 @@ main:
 
     #[test]
     fn test_assembly_error() {
-        let test_dir = setup();
+        let test_dir = setup("assembly_error");
         let asm_path = test_dir.join("test.asm");
 
-        // Invalid assembly (undefined instruction)
+        // Invalid assembly (syntax error - missing closing quote)
         let asm_content = r#".nds
-.create "output.bin",0
-
 .thumb
+.create "error_output.bin",0x0
 
-    invalid_instruction_here
+    .db "unterminated string
 
 .close
 "#;
 
         fs::write(&asm_path, asm_content).unwrap();
 
+        // Canonicalize paths for armips FFI
+        let canonical_dir = test_dir.canonicalize().unwrap();
+        let canonical_asm = asm_path.canonicalize().unwrap();
+
         let result = assemble(
             ArmipsArgsBuilder::new()
-                .input_file(&asm_path)
-                .working_dir(&test_dir)
+                .input_file(&canonical_asm)
+                .working_dir(&canonical_dir)
                 .silent(true),
         );
 
