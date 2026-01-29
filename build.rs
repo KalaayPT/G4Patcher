@@ -1,3 +1,4 @@
+// build.rs
 use fs_extra::dir::{copy, CopyOptions};
 use std::fs;
 use std::path::Path;
@@ -22,6 +23,16 @@ fn main() {
             options.overwrite = true;
             options.copy_inside = true;
             copy(folder, &target_dir, &options).unwrap();
+        }
+    }
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let armips_path = target_dir.join("assets").join("armips.exe");
+        if armips_path.exists() {
+            fs::set_permissions(&armips_path, fs::Permissions::from_mode(0o755))
+                .expect("Failed to set execute permissions on armips.exe");
         }
     }
 }

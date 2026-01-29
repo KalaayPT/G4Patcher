@@ -44,7 +44,7 @@ VarsFlags_GetVarAddress    equ 0x020508B8
 .org 0x2096558		; Rare Candy repoint
 
 	bl candycheck
-	
+
 .fill 34,0x0
 
 .close
@@ -54,7 +54,7 @@ VarsFlags_GetVarAddress    equ 0x020508B8
 .org 0x2249008		; In-Battle EXP repoint
 
 	bl inbattlecheck
-	
+
 .close
 .endif
 
@@ -78,10 +78,10 @@ inbattlecheck:
     blt end
     bl #0x224900c
     blt end
-	
+
 end:
 	bl #0x224900e
-		
+
 candycheck:
 	add r0, r4, #0
 	mov r1, #0x19
@@ -92,14 +92,14 @@ candycheck:
 	mov r1, #0xa1
 	mov r2, #0
 	bl Pokemon_GetValue
-	
+
 	push {r0}
 	bl getlevelcap
 	mov r3, r0
 	pop {r0}
 	cmp r0, r3
 	bhs end2
-		
+
 	add r0, r4, #0
 	bl Heap_Free
 	add sp, #0x18
@@ -120,7 +120,7 @@ getscriptvar:
 	bl VarsFlags_GetVarAddress
 	ldrh r0, [r0]
 	pop {r3-r7,pc}
-	
+
 .pool
 
 .ascii "LevelCaps_end"

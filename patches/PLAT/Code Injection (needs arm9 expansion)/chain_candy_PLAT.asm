@@ -1,5 +1,5 @@
 ; Chain Rare Candies for Pokémon Platinum (USA) by Yako
-; Credit: Kalaay and Mixone for figuring this one out with me, the pokeplatinum team for decompiling the game, Mikelan98 and Nomura for the arm9 expansion 
+; Credit: Kalaay and Mixone for figuring this one out with me, the pokeplatinum team for decompiling the game, Mikelan98 and Nomura for the arm9 expansion
 
 .nds
 .thumb
@@ -13,7 +13,7 @@ INJECT_ADDR equ 0x023C8000
 
 ; Open arm9
 .ifdef PATCH
-.open "arm9.bin", 0x02000000  
+.open "arm9.bin", 0x02000000
 
 ; Branch to hook
 .org 0x02085ec6

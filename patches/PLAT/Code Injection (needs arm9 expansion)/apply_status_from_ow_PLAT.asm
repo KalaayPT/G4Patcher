@@ -81,7 +81,7 @@ apply_status_from_ow:
     mov r0, #1 ; return true for failure
     pop {r4, r5, r6, r7, pc} ; pop registers and return
 
-    noStatus: 
+    noStatus:
     sub sp, #0x4 ; Make space for status parameter
     str r4, [sp] ; Store the status parameter on the stack
     mov r0, r7 ; r0 = mon
