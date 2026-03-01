@@ -77,6 +77,7 @@ BattleSystem_GetBattlerSide         equ 0x0223E208
 .open SYNTH_OVERLAY_PATH, 0x023C8000
 .endif
 
+.org INJECT_ADDR
 .ascii "WildBossBattle"
 .align 2
 ; Convenience function to check a flag
