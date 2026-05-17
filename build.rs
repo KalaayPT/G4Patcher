@@ -34,9 +34,12 @@ fn build_armips() {
     let out_path = Path::new(&out_dir);
 
     let armips_dir = manifest_path.join("armips");
-    let armips_canonical = armips_dir
-        .canonicalize()
-        .expect("Failed to canonicalize armips path");
+    if !armips_dir.exists() {
+        panic!(
+            "armips source directory does not exist: {}",
+            armips_dir.display()
+        );
+    }
 
     let build_dir = out_path.join("armips-build");
     let cmake_cache = build_dir.join("CMakeCache.txt");
@@ -48,83 +51,40 @@ fn build_armips() {
     }
     fs::create_dir_all(&build_dir).expect("Failed to create build dir");
 
-    // Platform-specific path and command handling
-    let (armips_path, build_path, use_bash) = if cfg!(target_os = "windows") {
-        // On Windows with MSYS2, convert paths to Unix-style
-        let to_msys_path = |p: &Path| {
-            let s = p.to_string_lossy().replace('\\', "/");
-            if s.len() > 2 && s.chars().nth(1) == Some(':') {
-                // Convert C:/... to /c/...
-                format!("/{}{}", &s[0..1].to_lowercase(), &s[2..])
-            } else {
-                s
-            }
-        };
-        (
-            to_msys_path(&armips_canonical),
-            to_msys_path(&build_dir),
-            true,
-        )
-    } else {
-        // On Linux/macOS, use paths directly
-        (
-            armips_canonical.to_string_lossy().to_string(),
-            build_dir.to_string_lossy().to_string(),
-            false,
-        )
-    };
+    let armips_path = armips_dir.to_string_lossy().to_string();
+    let build_path = build_dir.to_string_lossy().to_string();
 
     eprintln!("Armips source: {}", armips_path);
     eprintln!("Build dir: {}", build_path);
 
-    // Configure
-    let status = if use_bash {
-        let cmake_args = format!(
-            "-S {} -B {} -GNinja -DARMIPS_LIBRARY_ONLY=ON -DARMIPS_USE_STD_FILESYSTEM=ON -DCMAKE_BUILD_TYPE=Release",
-            armips_path, build_path
-        );
-        Command::new("bash")
-            .arg("-c")
-            .arg(format!("cmake {}", cmake_args))
-            .status()
-    } else {
-        Command::new("cmake")
-            .arg("-S")
-            .arg(&armips_path)
-            .arg("-B")
-            .arg(&build_path)
-            .arg("-GNinja")
-            .arg("-DARMIPS_LIBRARY_ONLY=ON")
-            .arg("-DARMIPS_USE_STD_FILESYSTEM=ON")
-            .arg("-DCMAKE_BUILD_TYPE=Release")
-            .status()
-    }
-    .expect("Failed to run cmake configure");
+    // Configure. Use direct process arguments instead of going through a shell; on
+    // GitHub's Windows runners, `bash` can resolve to WSL, which is not installed.
+    let status = Command::new("cmake")
+        .arg("-S")
+        .arg(&armips_path)
+        .arg("-B")
+        .arg(&build_path)
+        .arg("-GNinja")
+        .arg("-DARMIPS_LIBRARY_ONLY=ON")
+        .arg("-DARMIPS_USE_STD_FILESYSTEM=ON")
+        .arg("-DCMAKE_BUILD_TYPE=Release")
+        .status()
+        .expect("Failed to run cmake configure");
 
     if !status.success() {
         panic!("CMake configure failed");
     }
 
     // Build
-    let status = if use_bash {
-        Command::new("bash")
-            .arg("-c")
-            .arg(format!(
-                "cmake --build {} --config Release --target armips",
-                build_path
-            ))
-            .status()
-    } else {
-        Command::new("cmake")
-            .arg("--build")
-            .arg(&build_path)
-            .arg("--config")
-            .arg("Release")
-            .arg("--target")
-            .arg("armips")
-            .status()
-    }
-    .expect("Failed to run cmake build");
+    let status = Command::new("cmake")
+        .arg("--build")
+        .arg(&build_path)
+        .arg("--config")
+        .arg("Release")
+        .arg("--target")
+        .arg("armips")
+        .status()
+        .expect("Failed to run cmake build");
 
     if !status.success() {
         panic!("CMake build failed");
