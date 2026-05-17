@@ -15,6 +15,9 @@ targets = ["aarch64-apple-darwin", "x86_64-unknown-linux-gnu", "x86_64-pc-window
 install-path = "CARGO_HOME"
 # Whether to install an updater program
 install-updater = false
+# Allow intentional edits to the generated GitHub workflow. We need this for the
+# CMake/Ninja setup step and to avoid cargo-dist's generated fromJson() env parsing.
+allow-dirty = ["ci"]
 
 [dist.github-custom-runners]
 global = "ubuntu-latest"
