@@ -273,11 +273,15 @@ jobs:
           rm -f artifacts/*-dist-manifest.json
       - name: Create GitHub Release
         env:
-          PRERELEASE_FLAG: "${{ fromJson(steps.host.outputs.manifest).announcement_is_prerelease && '--prerelease' || '' }}"
-          ANNOUNCEMENT_TITLE: "${{ fromJson(steps.host.outputs.manifest).announcement_title }}"
-          ANNOUNCEMENT_BODY: "${{ fromJson(steps.host.outputs.manifest).announcement_github_body }}"
           RELEASE_COMMIT: "${{ github.sha }}"
+        shell: bash
         run: |
+          # cargo-dist's generated template parses this via fromJson() in env, but
+          # GitHub can validate that before the step output exists and reject the workflow.
+          PRERELEASE_FLAG=$(jq -r 'if .announcement_is_prerelease then "--prerelease" else "" end' dist-manifest.json)
+          ANNOUNCEMENT_TITLE=$(jq -r '.announcement_title' dist-manifest.json)
+          ANNOUNCEMENT_BODY=$(jq -r '.announcement_github_body' dist-manifest.json)
+
           # Write and read notes from a file to avoid quoting breaking things
           echo "$ANNOUNCEMENT_BODY" > $RUNNER_TEMP/notes.txt
 
