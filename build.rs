@@ -59,15 +59,27 @@ fn build_armips() {
 
     // Configure. Use direct process arguments instead of going through a shell; on
     // GitHub's Windows runners, `bash` can resolve to WSL, which is not installed.
-    let status = Command::new("cmake")
+    let mut configure = Command::new("cmake");
+    configure
         .arg("-S")
         .arg(&armips_path)
         .arg("-B")
-        .arg(&build_path)
-        .arg("-GNinja")
+        .arg(&build_path);
+
+    if cfg!(target_env = "msvc") {
+        // Build armips with MSVC too. Mixing a MinGW/GNU static archive with the
+        // MSVC Rust target can produce linker errors like LNK1143.
+        configure.arg("-G").arg("Visual Studio 17 2022");
+        if std::env::var("TARGET").is_ok_and(|target| target.starts_with("x86_64-")) {
+            configure.arg("-A").arg("x64");
+        }
+    } else {
+        configure.arg("-GNinja").arg("-DCMAKE_BUILD_TYPE=Release");
+    }
+
+    let status = configure
         .arg("-DARMIPS_LIBRARY_ONLY=ON")
         .arg("-DARMIPS_USE_STD_FILESYSTEM=ON")
-        .arg("-DCMAKE_BUILD_TYPE=Release")
         .status()
         .expect("Failed to run cmake configure");
 
@@ -90,7 +102,13 @@ fn build_armips() {
         panic!("CMake build failed");
     }
 
-    println!("cargo:rustc-link-search=native={}", build_path);
+    let link_path = if cfg!(target_env = "msvc") {
+        build_dir.join("Release")
+    } else {
+        build_dir.clone()
+    };
+
+    println!("cargo:rustc-link-search=native={}", link_path.display());
     println!("cargo:rustc-link-lib=static=armips");
 
     // Link C++ standard library
