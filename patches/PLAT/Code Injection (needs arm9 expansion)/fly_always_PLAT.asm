@@ -55,7 +55,7 @@ MON_DATA_MOVE4              equ 57
 INJECT_ADDR equ 0x023C8510
 
 .ifdef PATCH
-.open "arm9.bin", 0x02000000
+.open "arm9/arm9.bin", 0x02000000
 
 ; Replace the call to GetContextMenuEntriesForPartyMon in sub_0207FFC8
 .org 0x02080024
@@ -67,7 +67,7 @@ INJECT_ADDR equ 0x023C8510
 ; OVERLAY 6 HOOK - Replace CutIn_BuildPokemonSpriteTemplate
 ; This makes the fly cut-in always show Staravia
 ; =====================================================================
-.open "overlay/overlay_0006.bin", 0x0223E140
+.open "arm9_overlays/ov006.bin", 0x0223E140
 
 .org CutIn_BuildPokemonSpriteTemplate
     ; Original function: CutIn_BuildPokemonSpriteTemplate(HMCutIn *cutIn, PokemonSpriteTemplate *spriteTemplate)

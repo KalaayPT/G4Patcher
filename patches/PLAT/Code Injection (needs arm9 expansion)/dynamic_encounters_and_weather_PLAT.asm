@@ -25,7 +25,7 @@ UpdateWeatherAnimation equ 0x021D5F7C
 INJECT_ADDR equ 0x023C8070
 
 .ifdef PATCH
-.open "arm9.bin", 0x02000000  ; Open arm9.bin
+.open "arm9/arm9.bin", 0x02000000  ; Open arm9.bin
 
 .org 0x020eaec8 ; Overwrite script command DummySetWeather (0x9C/156)
 

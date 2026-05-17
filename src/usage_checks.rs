@@ -156,7 +156,7 @@ pub fn needs_synthoverlay(asm_path: &str) -> bool {
 /// }
 /// ```
 pub fn is_arm9_expanded(project_path: &str, game_version: &str) -> io::Result<bool> {
-    let arm9_path = PathBuf::from(project_path).join("arm9.bin");
+    let arm9_path = PathBuf::from(project_path).join("arm9/arm9.bin");
     let mut buf = [0u8; 4];
 
     match game_version {

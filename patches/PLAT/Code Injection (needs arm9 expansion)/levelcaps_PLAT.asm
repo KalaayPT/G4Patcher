@@ -39,7 +39,7 @@ SaveData_GetVarsFlags equ 0x020507E4
 VarsFlags_GetVarAddress    equ 0x020508B8
 
 .ifdef PATCH
-.open "arm9.bin", 0x02000000
+.open "arm9/arm9.bin", 0x02000000
 
 .org 0x2096558		; Rare Candy repoint
 
@@ -49,7 +49,7 @@ VarsFlags_GetVarAddress    equ 0x020508B8
 
 .close
 
-.open "overlay/overlay_0016.bin", 0x0223B140
+.open "arm9_overlays/ov016.bin", 0x0223B140
 
 .org 0x2249008		; In-Battle EXP repoint
 

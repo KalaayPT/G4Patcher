@@ -37,7 +37,7 @@ INJECT_ADDR equ 0x023C8000
 
 ; ------- Inject hook into arm9.bin -------
 .ifdef PATCH
-.open "arm9.bin", 0x02000000  ; Open arm9.bin
+.open "arm9/arm9.bin", 0x02000000
 
 .org 0x020fb090 ; Overwrite pointer in scrcmd (ScrCmd_228)
     .word apply_status_from_ow + 1 ; Pointer to the function in the synth overlay

@@ -19,7 +19,7 @@ CreateWildMonShinyWithGenderOrNature equ 0x02241BAC
 INJECT_ADDR equ 0x023C8020
 
 .ifdef PATCH
-.open "overlay/overlay_0006.bin", 0x0223E140  ; Open Overlay 6
+.open "arm9_overlays/ov006.bin", 0x0223E140  ; Open Overlay 6
 
 .org 0x02241CC2
 

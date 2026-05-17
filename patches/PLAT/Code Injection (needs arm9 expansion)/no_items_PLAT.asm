@@ -7,7 +7,7 @@
 INJECT_ADDR equ 0x023C8000
 
 .ifdef PATCH
-.open "overlay/overlay_0016.bin", 0x0223B140  ; Open the battle overlay
+.open "arm9_overlays/ov016.bin", 0x0223B140  ; Open the battle overlay
 
 .org 0x0224be98
 

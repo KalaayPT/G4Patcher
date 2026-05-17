@@ -16,7 +16,7 @@ SaveData_Ptr equ 0x020245A4
 
 .ifdef PATCH
 
-.open "arm9.bin", 0x02000000
+.open "arm9/arm9.bin", 0x02000000
 .org 0x02000DCE
     bl function
 .org 0x02017CA0 ; ApplyButtonModeToInput skip

@@ -5,7 +5,7 @@
 .nds
 .thumb
 
-.open "overlay/overlay_0008.bin", 0x0221BE20
+.open "arm9_overlays/ov008.bin", 0x0221BE20
 
 .org 0x0221C75A
 
@@ -13,7 +13,7 @@
 
 .close
 
-.open "arm9.bin", 0x02000000
+.open "arm9/arm9.bin", 0x02000000
 
 .org 0x020890A8
 

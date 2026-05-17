@@ -25,7 +25,7 @@ INJECT_ADDR equ 0x023C8000
 
 ; ------- Inject hook into arm9.bin -------
 .ifdef PATCH
-.open "arm9.bin", 0x02000000
+.open "arm9/arm9.bin", 0x02000000
 
 .org 0x02088b74     ; HandleInput_Main function
 

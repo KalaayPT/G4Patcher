@@ -4,7 +4,7 @@
 INJECT_ADDR equ 0x023C8000
 
 .ifdef PATCH
-.open "overlay/overlay_0014.bin", 0x0221FC20  ; Open the trainer AI overlay
+.open "arm9_overlays/ov014.bin", 0x0221FC20  ; Open the trainer AI overlay
 
 .org 0x0222487a
 

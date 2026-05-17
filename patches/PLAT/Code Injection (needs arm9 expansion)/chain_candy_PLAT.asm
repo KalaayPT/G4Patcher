@@ -13,7 +13,7 @@ INJECT_ADDR equ 0x023C8000
 
 ; Open arm9
 .ifdef PATCH
-.open "arm9.bin", 0x02000000
+.open "arm9/arm9.bin", 0x02000000
 
 ; Branch to hook
 .org 0x02085ec6

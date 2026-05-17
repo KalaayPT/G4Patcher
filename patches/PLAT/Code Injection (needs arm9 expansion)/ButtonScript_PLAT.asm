@@ -27,7 +27,7 @@ INJECT_ADDR equ 0x023C8000
 
 ; ------- Inject hook into arm9.bin -------
 .ifdef PATCH
-.open "overlay/overlay_0005.bin", 0x021D0D80
+.open "arm9_overlays/ov005.bin", 0x021D0D80
 
 .org 0x021D20CC
 

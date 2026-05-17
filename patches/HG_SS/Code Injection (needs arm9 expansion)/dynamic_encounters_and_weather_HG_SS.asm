@@ -27,7 +27,7 @@ UpdateWeatherAnimation equ 0x021EB2B8 ; FieldWeatherUpdate_UsedFlash (this handl
 INJECT_ADDR equ 0x023C8070
 
 .ifdef PATCH
-.open "arm9.bin", 0x02000000  ; Open arm9.bin
+.open "arm9/arm9.bin", 0x02000000
 
 .org 0x020fb07c ; Overwrite script command DummyTrainerBattle (0xDF/223)
 

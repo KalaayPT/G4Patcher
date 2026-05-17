@@ -27,9 +27,9 @@ StartMapSceneScript equ 0x0203FE74 ; StartMapSceneScript(fieldSystem, scriptID, 
 
 INJECT_ADDR equ 0x023C8000
 
-; ------- Inject hook into arm9.bin -------
+; ------- Inject hook into overlay 1 -------
 .ifdef PATCH
-.open "overlay/overlay_0001.bin", 0x021E5900
+.open "arm9_overlays/ov001.bin", 0x021E5900
 
 .org 0x021E6D9E
 

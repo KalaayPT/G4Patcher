@@ -80,7 +80,7 @@ INJECT_ADDR equ 0x023C8000
 
 ; ------- Inject hook into arm9.bin -------
 .ifdef PATCH
-.open "arm9.bin", 0x02000000
+.open "arm9/arm9.bin", 0x02000000
 
 .org 0x020649ac
     .word sItemFieldUseFuncs
@@ -107,7 +107,7 @@ INJECT_ADDR equ 0x023C8000
 
 .close
 
-.open "overlay/overlay_0015.bin", 0x021F9380
+.open "arm9_overlays/ov015.bin", 0x021F9380
 .org 0x021FBA76
     bl BagApp_UseItemExpansion ; overwrite the return of the BagApp_TryUseItemInPlace function
 .close

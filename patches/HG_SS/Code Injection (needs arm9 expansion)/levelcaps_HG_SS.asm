@@ -42,22 +42,22 @@ VarsFlags_GetVarAddress	equ 0x020504A4
 INJECT_ADDR equ 0x023C8E30
 
 .ifdef PATCH
-.open "arm9.bin", 0x02000000
+.open "arm9/arm9.bin", 0x02000000
 
 .org 0x02090438		; Rare Candy repoint, hooks into UseItemOnPokemon
 
 	bl candycheck
-	
+
 ;.fill 34,0x0
 
 .close
 
-.open "overlay/overlay_0012.bin", 0x022378C0
+.open "arm9_overlays/ov012.bin", 0x022378C0
 
 .org 0x2245A2C		; In-Battle EXP repoint, hooks into Task_GetExp
 
 	bl inbattlecheck
-	
+
 .close
 .endif
 

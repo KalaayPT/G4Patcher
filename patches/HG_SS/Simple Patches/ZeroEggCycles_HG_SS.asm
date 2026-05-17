@@ -3,7 +3,7 @@
 .nds
 .thumb
 
-.open "arm9.bin", 0x02000000
+.open "arm9/arm9.bin", 0x02000000
 
 .org 0x0206c8c8
 

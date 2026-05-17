@@ -4,7 +4,7 @@
 .nds
 .thumb
 
-.open "overlay/overlay_0012.bin", 0x022378C0
+.open "arm9_overlays/ov012.bin", 0x022378C0
 
 .org 0x22465A4
 

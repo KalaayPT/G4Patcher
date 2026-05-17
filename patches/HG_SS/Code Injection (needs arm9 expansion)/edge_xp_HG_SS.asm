@@ -23,7 +23,7 @@ Party_GetCurrentCount equ 0x02074640
 INJECT_ADDR equ 0x023C8000
 
 .ifdef PATCH
-.open "arm9.bin", 0x02000000  ; Open arm9.bin
+.open "arm9/arm9.bin", 0x02000000
 
 .org 0x020fb094 ; Overwrite pointer in scrcmd (ScrCmd_229)
 

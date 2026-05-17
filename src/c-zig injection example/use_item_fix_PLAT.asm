@@ -19,7 +19,7 @@ INJECT_ADDR equ 0x023C8000
 
 ; --- Hook the original code to call the Zig function -------------------------
 .ifdef PATCH
-.open "overlay/overlay_0014.bin", 0x0221FC20      ; trainer AI overlay base
+.open "arm9_overlays/ov014.bin", 0x0221FC20      ; trainer AI overlay base
 .org 0x0222487A
     bl  use_item_fix                               ; call symbol from the object
 .close
