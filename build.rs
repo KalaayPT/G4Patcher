@@ -11,7 +11,7 @@ fn main() {
     let profile = std::env::var("PROFILE").unwrap_or_else(|_| "debug".into());
     let target_dir = Path::new(&out_dir).join(&profile);
 
-    let folders = ["assets", "patches"];
+    let folders = ["patches"];
 
     for folder in folders.iter() {
         let dest = target_dir.join(folder);
@@ -23,16 +23,6 @@ fn main() {
             options.overwrite = true;
             options.copy_inside = true;
             copy(folder, &target_dir, &options).unwrap();
-        }
-    }
-
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let armips_path = target_dir.join("assets").join("armips.exe");
-        if armips_path.exists() {
-            fs::set_permissions(&armips_path, fs::Permissions::from_mode(0o755))
-                .expect("Failed to set execute permissions on armips.exe");
         }
     }
 }
