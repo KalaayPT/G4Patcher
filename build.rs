@@ -49,6 +49,13 @@ fn build_armips() {
         .expect("Failed to canonicalize armips path");
 
     let build_dir = out_path.join("armips-build");
+    let cmake_cache = build_dir.join("CMakeCache.txt");
+    if cmake_cache.exists() {
+        // `cargo package` verifies the crate from an extracted copy, but Cargo can reuse the
+        // same OUT_DIR as the checkout build. CMake caches the original source directory and
+        // refuses to reconfigure if it changes, so start fresh when build.rs is rerun.
+        fs::remove_dir_all(&build_dir).expect("Failed to remove stale armips build dir");
+    }
     fs::create_dir_all(&build_dir).expect("Failed to create build dir");
 
     // Platform-specific path and command handling
