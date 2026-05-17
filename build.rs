@@ -70,6 +70,12 @@ fn build_armips() {
         // Build armips with MSVC too. Mixing a MinGW/GNU static archive with the
         // MSVC Rust target can produce linker errors like LNK1143.
         configure.arg("-G").arg("Visual Studio 17 2022");
+        // Rust's MSVC target links the static CRT by default. CMake's Visual
+        // Studio Release default is /MD, which leaves unresolved __imp_* CRT
+        // symbols when linked into the Rust binary, so force /MT for armips.
+        configure
+            .arg("-DCMAKE_POLICY_DEFAULT_CMP0091=NEW")
+            .arg("-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded");
         if std::env::var("TARGET").is_ok_and(|target| target.starts_with("x86_64-")) {
             configure.arg("-A").arg("x64");
         }
