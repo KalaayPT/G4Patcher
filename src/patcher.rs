@@ -96,7 +96,7 @@ impl PatcherCore {
         let version_str = determine_game_version(&path)
             .map_err(|e| PatcherError::InvalidGameVersion(e.to_string()))?;
 
-        let game_version = match version_str {
+        let game_version = match version_str.as_str() {
             "Platinum" => GameVersion::Platinum,
             "HeartGold" => GameVersion::HeartGold,
             "SoulSilver" => GameVersion::SoulSilver,

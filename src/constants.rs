@@ -6,13 +6,13 @@ pub const GAME_DEPENDENT_OVERLAY_PLAT: &str = "0009";
 /// The synthOverlay for Pokémon HeartGold/SoulSilver.
 pub const GAME_DEPENDENT_OVERLAY_HG: &str = "0000";
 
-/// The header bytes for Pokémon Platinum.
-pub const PLATINUM_BYTES: [u8; 4] = [0x43, 0x50, 0x55, 0x45]; // "CPUE" in bytes
-/// The header bytes for Pokémon HeartGold.
-pub const HEARTGOLD_BYTES: [u8; 4] = [0x49, 0x50, 0x4B, 0x45]; // "IPKE" in bytes
+/// The game code for Pokémon Platinum.
+pub const PLATINUM_CODE: &str = "CPUE";
+/// The game code for Pokémon HeartGold.
+pub const HEARTGOLD_CODE: &str = "IPKE";
 
-/// The header bytes for Pokémon SoulSilver.
-pub const SOULSILVER_BYTES: [u8; 4] = [0x49, 0x50, 0x47, 0x45]; // "IPGE" in bytes
+/// The game code for Pokémon SoulSilver.
+pub const SOULSILVER_CODE: &str = "IPGE";
 
 pub const PLATINUM: &str = "Platinum";
 pub const HEARTGOLD: &str = "HeartGold";

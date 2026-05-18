@@ -1,51 +1,58 @@
 #![warn(clippy::nursery, clippy::pedantic)]
 
 use crate::constants::{
-    HEARTGOLD, HEARTGOLD_BYTES, PLATINUM, PLATINUM_BYTES, SOULSILVER, SOULSILVER_BYTES,
+    HEARTGOLD, HEARTGOLD_CODE, PLATINUM, PLATINUM_CODE, SOULSILVER, SOULSILVER_CODE,
 };
 use log::error;
 use std::io::{BufRead, BufReader, Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 
-/// Determine the game version based on the header.bin file in the project path.
+/// Determine the game version based on the header.yaml file in the project path.
 ///
 /// # Arguments
-/// * `project_path`: A path that holds the directory where `header.bin` is located.
+/// * `project_path`: A path that holds the directory where `header.yaml` is located.
 ///
 /// # Returns
-/// A string slice representing the game version, which can be one of:
+/// A string representing the game version, which can be one of:
 /// * `"Platinum"`
 /// * `"HeartGold"`
 /// * `"SoulSilver"`
 ///
 /// # Details
 /// This function:
-/// * Constructs the path to `header.bin` by appending it to the provided `project_path`.
-/// * Opens the `header.bin` file and reads a specific byte sequence starting from offset 0xC.
-/// * Compares the read bytes against predefined constants for each game version.
-/// * If the bytes match, it returns the corresponding game version.
-/// * If the bytes do not match any known version, it panics with an error message indicating the unknown version and the bytes found.
-pub fn determine_game_version(project_path: &Path) -> io::Result<&str> {
-    let header_path = project_path.join("header.bin");
+/// * Constructs the path to `header.yaml` by appending it to the provided `project_path`.
+/// * Opens the `header.yaml` file and reads lines to find the `gamecode` property.
+/// * Compares the game code against predefined constants for each game version.
+/// * If the code matches, it returns the corresponding game version.
+/// * If the code does not match any known version, it returns an error indicating the unknown version.
+pub fn determine_game_version(project_path: &Path) -> io::Result<String> {
+    let header_path = project_path.join("header.yaml");
 
-    fs::File::open(&header_path).map_or_else(|_| {
-        Err(io::Error::new(io::ErrorKind::NotFound, "header.bin not found"))
-    }, |mut file| {
-        let mut buf = [0u8; 4];
-        file.seek(SeekFrom::Start(0xC))?;
-        file.read_exact(&mut buf)?;
-        match buf {
-            PLATINUM_BYTES => Ok(PLATINUM),
-            HEARTGOLD_BYTES => Ok(HEARTGOLD),
-            SOULSILVER_BYTES => Ok(SOULSILVER),
-            _ => {
-                error!("Unknown game version in header.bin at path: {}\nBytes found:{:02X} {:02X} {:02X} {:02X}",
-                       header_path.display(), buf[0], buf[1], buf[2], buf[3]);
-                Err(io::Error::new(io::ErrorKind::InvalidData, "Unknown game version in header.bin"))
-            }
+    let file = fs::File::open(&header_path).map_err(|_| {
+        io::Error::new(io::ErrorKind::NotFound, "header.yaml not found")
+    })?;
+
+    let reader = BufReader::new(file);
+    for line in reader.lines() {
+        let line = line?;
+        let line = line.trim();
+        if let Some(code) = line.strip_prefix("gamecode:") {
+            let code = code.trim();
+            return match code {
+                PLATINUM_CODE => Ok(PLATINUM.to_string()),
+                HEARTGOLD_CODE => Ok(HEARTGOLD.to_string()),
+                SOULSILVER_CODE => Ok(SOULSILVER.to_string()),
+                _ => {
+                    error!("Unknown game version in header.yaml at path: {}\nGame code found: {}",
+                           header_path.display(), code);
+                    Err(io::Error::new(io::ErrorKind::InvalidData, "Unknown game version in header.yaml"))
+                }
+            };
         }
-    })
+    }
+
+    Err(io::Error::new(io::ErrorKind::InvalidData, "gamecode not found in header.yaml"))
 }
 
 /// Check if the patch is compatible with the project based on the game version.
@@ -61,7 +68,7 @@ pub fn determine_game_version(project_path: &Path) -> io::Result<&str> {
 ///
 /// # Details
 /// This function:
-/// * Calls `determine_game_version` to get the game version based on the `header.bin` file in the project path.
+/// * Calls `determine_game_version` to get the game version based on the `header.yaml` file in the project path.
 /// * Checks if the `patch_path` contains specific substrings that indicate compatibility with the game version.
 /// * Returns `true` if the patch is compatible, otherwise returns `false`.
 ///
@@ -78,7 +85,7 @@ pub fn determine_game_version(project_path: &Path) -> io::Result<&str> {
 /// }
 /// ```
 pub fn is_patch_compatible(patch_path: &str, project_path: &Path) -> bool {
-    match determine_game_version(project_path).ok() {
+    match determine_game_version(project_path).ok().as_deref() {
         Some(PLATINUM) if patch_path.contains("_PLAT") => true,
         Some(HEARTGOLD) if patch_path.contains("_HG") => true,
         Some(SOULSILVER) if patch_path.contains("_SS") => true,
