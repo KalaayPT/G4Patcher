@@ -19,8 +19,11 @@ pub struct LogEntry {
 static LOGGER: OnceLock<GuiLogger> = OnceLock::new();
 
 impl Log for GuiLogger {
-    fn enabled(&self, _: &Metadata) -> bool {
-        true
+    fn enabled(&self, metadata: &Metadata) -> bool {
+        metadata.level() <= log::max_level()
+            && (metadata.level() <= Level::Warn
+                || metadata.target().starts_with("g4patcher")
+                || metadata.target().starts_with("G4Patcher"))
     }
 
     fn log(&self, record: &Record) {
