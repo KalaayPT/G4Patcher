@@ -1,6 +1,6 @@
 [package]
 name = "G4Patcher"
-version = "1.0.1"
+version = "1.1.0"
 edition = "2021"
 repository = "https://github.com/KalaayPT/g4patcher"
 authors = ["KalaayPT <contact@kalaay.dev>"]
