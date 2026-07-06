@@ -3,6 +3,12 @@
 # current version from git tags and skip `cargo publish`.
 git_only = true
 
+# Skip semver checks. cargo-semver-checks runs `cargo package` under the hood,
+# whose verification build copies the crate into an isolated dir that does not
+# contain the `armips/` git submodule, panicking build.rs. The tool is a binary
+# with no library API anyway, so semver is meaningless here.
+semver_check = false
+
 # Emit a `v{version}` tag and GitHub release, which the tag-triggered
 # release.yml picks up to build and attach the platform binaries.
 git_tag_name = "v{{ version }}"
