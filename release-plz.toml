@@ -1,0 +1,9 @@
+[workspace]
+# G4Patcher is a binary GUI tool, not published to crates.io. Determine the
+# current version from git tags and skip `cargo publish`.
+git_only = true
+
+# Emit a `v{version}` tag and GitHub release, which the tag-triggered
+# release.yml picks up to build and attach the platform binaries.
+git_tag_name = "v{{ version }}"
+git_release_name = "v{{ version }}"

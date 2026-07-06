@@ -7,17 +7,6 @@ authors = ["KalaayPT <contact@kalaay.dev>"]
 description = "A code injection patcher tool for Pokémon Gen 4 ROM hacks"
 license = "MIT"
 
-[package.metadata.wix]
-upgrade-guid = "BD0B38A0-4C9B-469F-AA60-23D7DF6F5C16"
-path-guid = "06123F0D-C92F-4036-99BC-18418F8D88CE"
-license = false
-eula = false
-
-[package.metadata.dist]
-include = [
-    "./patches"
-]
-
 [dependencies]
 log = "0.4.27"
 rfd = "0.15.3"
@@ -27,7 +16,3 @@ clap = "4.5.43"
 
 [build-dependencies]
 fs_extra = "1.3"
-
-[profile.dist]
-inherits = "release"
-lto = "thin"
