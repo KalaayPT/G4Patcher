@@ -6,6 +6,7 @@ version = 4
 name = "G4Patcher"
 version = "1.1.0"
 dependencies = [
+ "cc",
  "clap",
  "eframe",
  "fs_extra",
