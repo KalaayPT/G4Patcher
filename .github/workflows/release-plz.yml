@@ -3,7 +3,7 @@ name: release-plz
 on:
   push:
     branches:
-      - main
+      - master
 
 jobs:
   # Create the `v{version}` tag and the GitHub release with the generated
