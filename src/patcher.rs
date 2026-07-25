@@ -213,7 +213,7 @@ impl PatcherCore {
 
         if !result.success {
             let error_msg = if result.errors.is_empty() {
-                "Assembly failed".to_string()
+                "Assembly failed (armips provided no error details)".to_string()
             } else {
                 result.errors.join("\n")
             };

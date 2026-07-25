@@ -171,8 +171,10 @@ pub fn assemble(builder: ArmipsArgsBuilder) -> AssemblyResult {
     let args_ptr = &mut args as *mut ArmipsFFIArgs;
     let success = unsafe { armips_assemble(args_ptr) } == 0;
 
+    // The C side allocates the error array whenever it is non-empty, even on
+    // success (e.g. warnings), so always harvest and free it to avoid a leak.
     let mut errors = Vec::new();
-    if !success && !args.errors.is_null() {
+    if !args.errors.is_null() {
         unsafe {
             let error_slice = std::slice::from_raw_parts(args.errors, args.error_count);
             for &error_ptr in error_slice {
@@ -205,6 +207,11 @@ mod tests {
     use super::*;
     use std::fs;
     use std::path::PathBuf;
+    use std::sync::Mutex;
+
+    // armips keeps process-wide global state and changes the process working
+    // directory, so tests that assemble must not run concurrently
+    static ASSEMBLE_MUTEX: Mutex<()> = Mutex::new(());
 
     fn test_dir(test_name: &str) -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -231,6 +238,7 @@ mod tests {
 
     #[test]
     fn test_simple_assembly() {
+        let _guard = ASSEMBLE_MUTEX.lock().unwrap();
         let test_dir = setup("simple_assembly");
         let asm_path = test_dir.join("test.asm");
 
@@ -274,6 +282,7 @@ main:
 
     #[test]
     fn test_assembly_with_define() {
+        let _guard = ASSEMBLE_MUTEX.lock().unwrap();
         let test_dir = setup("assembly_with_define");
         let asm_path = test_dir.join("test.asm");
 
@@ -313,6 +322,7 @@ main:
 
     #[test]
     fn test_assembly_error() {
+        let _guard = ASSEMBLE_MUTEX.lock().unwrap();
         let test_dir = setup("assembly_error");
         let asm_path = test_dir.join("test.asm");
 
@@ -343,5 +353,97 @@ main:
 
         assert!(!result.success, "Should have failed");
         assert!(!result.errors.is_empty(), "Should have errors");
+    }
+
+    #[test]
+    fn test_missing_input_file_reports_error() {
+        let _guard = ASSEMBLE_MUTEX.lock().unwrap();
+        let test_dir = setup("missing_input_file");
+        let asm_path = test_dir.join("does_not_exist.asm");
+
+        // Regression test: a missing input file used to make armips fail
+        // without returning any error message at all
+        let result = assemble(
+            ArmipsArgsBuilder::new()
+                .input_file(&asm_path)
+                .working_dir(&test_dir)
+                .silent(true),
+        );
+
+        let _ = fs::remove_dir_all(&test_dir);
+
+        assert!(!result.success, "Should have failed");
+        assert!(
+            !result.errors.is_empty(),
+            "Failure must report error details, got none"
+        );
+    }
+
+    #[test]
+    fn test_missing_working_dir_reports_error() {
+        let _guard = ASSEMBLE_MUTEX.lock().unwrap();
+        let test_dir = setup("missing_working_dir");
+        let bogus_dir = test_dir.join("no_such_dir");
+        let asm_path = test_dir.join("test.asm");
+
+        fs::write(&asm_path, ".nds\n.thumb\n").unwrap();
+
+        // Regression test: an invalid working directory used to make armips
+        // fail without returning any error message at all
+        let result = assemble(
+            ArmipsArgsBuilder::new()
+                .input_file(&asm_path)
+                .working_dir(&bogus_dir)
+                .silent(true),
+        );
+
+        let _ = fs::remove_dir_all(&test_dir);
+
+        assert!(!result.success, "Should have failed");
+        assert!(
+            !result.errors.is_empty(),
+            "Failure must report error details, got none"
+        );
+    }
+
+    #[test]
+    fn test_non_ascii_path() {
+        let _guard = ASSEMBLE_MUTEX.lock().unwrap();
+        // Regression test: paths with non-ASCII characters (e.g. "Pokémon")
+        // failed on Windows because narrow strings were decoded with the ANSI
+        // code page instead of UTF-8
+        let base_dir = setup("non_ascii_path");
+        let test_dir = base_dir.join("Pokémon é テスト");
+        fs::create_dir_all(&test_dir).unwrap();
+        let asm_path = test_dir.join("test.asm");
+
+        let asm_content = r#".nds
+.thumb
+.create "non_ascii_output.bin",0x0
+
+main:
+    mov r0, #1
+    bx lr
+
+.close
+"#;
+
+        fs::write(&asm_path, asm_content).unwrap();
+
+        let canonical_dir = test_dir.canonicalize().unwrap();
+        let canonical_asm = asm_path.canonicalize().unwrap();
+
+        let result = assemble(
+            ArmipsArgsBuilder::new()
+                .input_file(&canonical_asm)
+                .working_dir(&canonical_dir)
+                .silent(true),
+        );
+
+        let output_exists = test_dir.join("non_ascii_output.bin").exists();
+        let _ = fs::remove_dir_all(&base_dir);
+
+        assert!(result.success, "Assembly failed: {:?}", result.errors);
+        assert!(output_exists, "Output file was not created");
     }
 }
