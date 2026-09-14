@@ -5,6 +5,11 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to build and upload artifacts for"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -16,6 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
           submodules: recursive
 
       - uses: dtolnay/rust-toolchain@stable
@@ -40,16 +46,17 @@ jobs:
 
       - name: Package
         run: |
-          NAME="G4Patcher-${{ github.ref_name }}-linux-x86_64"
+          NAME="G4Patcher-${{ github.event.inputs.tag || github.ref_name }}-linux-x86_64"
           mkdir "$NAME"
           cp target/release/G4Patcher "$NAME/"
           cp -r patches "$NAME/patches"
           tar -czf "${NAME}.tar.gz" "$NAME"
 
       - uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
+        if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
         with:
-          files: G4Patcher-${{ github.ref_name }}-linux-x86_64.tar.gz
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          files: G4Patcher-${{ github.event.inputs.tag || github.ref_name }}-linux-x86_64.tar.gz
           fail_on_unmatched_files: true
 
   build-macos:
@@ -58,6 +65,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
           submodules: recursive
 
       - uses: dtolnay/rust-toolchain@stable
@@ -74,24 +82,26 @@ jobs:
 
       - name: Package
         run: |
-          NAME="G4Patcher-${{ github.ref_name }}-macos-aarch64"
+          NAME="G4Patcher-${{ github.event.inputs.tag || github.ref_name }}-macos-aarch64"
           mkdir "$NAME"
           cp target/release/G4Patcher "$NAME/"
           cp -r patches "$NAME/patches"
           tar -czf "${NAME}.tar.gz" "$NAME"
 
       - uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
+        if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
         with:
-          files: G4Patcher-${{ github.ref_name }}-macos-aarch64.tar.gz
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          files: G4Patcher-${{ github.event.inputs.tag || github.ref_name }}-macos-aarch64.tar.gz
           fail_on_unmatched_files: true
 
   build-windows:
     name: Build (Windows x86-64)
-    runs-on: windows-latest
+    runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
           submodules: recursive
           fetch-depth: 0
 
@@ -115,14 +125,15 @@ jobs:
       - name: Package
         shell: pwsh
         run: |
-          $name = "G4Patcher-${{ github.ref_name }}-windows-x86_64"
+          $name = "G4Patcher-${{ github.event.inputs.tag || github.ref_name }}-windows-x86_64"
           New-Item -ItemType Directory "$name"
           Copy-Item "target/release/G4Patcher.exe" "$name/"
           Copy-Item -Recurse "patches" "$name"
           Compress-Archive -Path "$name/*" -DestinationPath "${name}.zip"
 
       - uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
+        if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
         with:
-          files: G4Patcher-${{ github.ref_name }}-windows-x86_64.zip
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          files: G4Patcher-${{ github.event.inputs.tag || github.ref_name }}-windows-x86_64.zip
           fail_on_unmatched_files: true

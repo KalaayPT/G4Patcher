@@ -1,9 +1,6 @@
 [workspace]
-# G4Patcher is a binary GUI tool, not published to crates.io.
-# git_only determines the current version from git tags instead of the
-# crates.io registry, but it does NOT skip `cargo publish` on its own
-# (despite what the release-plz docs imply): publish defaults to true and
-# must be disabled explicitly, or the release fails with "no token found".
+# G4Patcher is a binary GUI tool, not published to crates.io. Determine the
+# current version from git tags and skip `cargo publish`.
 git_only = true
 publish = false
 
