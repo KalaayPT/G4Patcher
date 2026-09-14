@@ -29,7 +29,7 @@ jobs:
         with:
           command: release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN }}
 
   # Open (or update) the rolling release PR proposing the next version bump
   # and changelog, ready for a maintainer to merge when it's time to release.
